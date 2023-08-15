@@ -42,6 +42,9 @@ class FileBrowserGUI:
         self.lv_var = tk.StringVar()
         self.radio_var = tk.IntVar()
 
+        self.output_path_var = tk.StringVar()
+        self.prev_output_path_var = tk.StringVar()
+
         self.browse_button = ttk.Button(master, text="Browse input", command=self.browse_files)
         self.tree = ttk.Treeview(master)
         self.tree.bind("<Double-1>", self.tree_double_click)
@@ -58,9 +61,10 @@ class FileBrowserGUI:
         self.intercept_label = ttk.Label(self.settings_frame, text="Intercept = " )
         self.intercept_entry = ttk.Entry(self.settings_frame, textvariable=self.intercept_var)
         
-        self.path_var_output = tk.StringVar()
-        self.path_entry_output = ttk.Entry(master, textvariable=self.path_var_output)
+        # OutPut 
+        self.path_entry_output = ttk.Entry(master, textvariable=self.output_path_var)
         self.browse_button_output = ttk.Button(master, text="Browse output", command=self.browse_button_output_click)
+        self.prev_path_label = ttk.Label(master, textvariable=self.prev_output_path_var)
         self.save_button = ttk.Button(master, text="Save", command = self.save_button_click,state='disabled')
 
         bs_selected_path = Image.open('icons/button_brainstem_selected.png').resize((160,40))
@@ -118,7 +122,8 @@ class FileBrowserGUI:
         self.image_frame.grid(row=1, column=1, sticky="nsew", columnspan= 3, padx=1,pady=1, ipadx=1, ipady=1)
 
         self.browse_button_output.grid(row=4, column=1, sticky="we")
-        self.path_entry_output.grid(row=4,column=0,sticky="we")
+        self.path_entry_output.grid(row=4,column=0, sticky="we")
+        self.prev_path_label.grid(row=5, column = 0, sticky="we")
 
         self.size_label.grid(row=0, column=0, sticky="w")
         self.size_entry.grid(row=0, column=1, sticky="we")
@@ -128,8 +133,8 @@ class FileBrowserGUI:
         self.intercept_label.grid(row=2, column=0, sticky="w")
         self.contrast_entry.grid(row=3, column=1, sticky="we")
         self.contrast_label.grid(row=3, column=0, sticky="w")
-        self.settings_frame.grid(row=4, column=0, sticky="w", columnspan=1, rowspan=2)
-        self.size_update_button.grid(row=7, column=4, sticky="e")
+        self.settings_frame.grid(row=6, column=0, sticky="w", columnspan=1, rowspan=2)
+        self.size_update_button.grid(row=6, column=2, sticky="e")
 
         self.selection_frame.grid(row=2, column=1, sticky="we", columnspan=2)
         self.bs_selection_button.grid(row=0, column=0, sticky="we")
@@ -183,10 +188,10 @@ class FileBrowserGUI:
         self.prev_image = ''
         self.actual_image = ''
         self.prev_dir = ''
+        self.output_path_var.set('')
+        self.prev_output_path_var.set('')
 
         self.save_button.grid(row=3, column=2, sticky="w")
-        self.output_dir = 0
-        self.output_file = 0
         self.gallery_index = 0
         self.max_gallery_index = 0
 
@@ -196,6 +201,8 @@ class FileBrowserGUI:
         # Set up treeview columns
         self.path_entry.delete(0, tk.END)
         self.path_var.set(sep(os.getcwd()))
+
+        self.radio_var.set(0)
         
         # Populate treeview with root directory
         root_node = self.tree.insert("", "end", text=os.getcwd())
@@ -243,6 +250,8 @@ class FileBrowserGUI:
                 if os.path.isdir(d_full_path):
                     node = self.tree.insert(parent, "end", text=directory,value=d_full_path)
                     self.populate_tree(node, d_full_path)
+                else:
+                    ...
         except:
             print(Exception)
                 
@@ -287,20 +296,94 @@ class FileBrowserGUI:
   
     def browse_button_output_click(self):
         directory = askdirectory()
-        self.path_var_output.set(directory)
+        self.output_path_var.set(directory)
         self.path_entry_output.delete(0, tk.END)
         self.path_entry_output.insert(0, directory)
 
-    def save_button_click(self):
-        try:
-            isExist = os.path.exists(self.delimiter.join(self.path_var_output.get().split(self.delimiter)[:-1]))
+    def reset(self):
+        self.bs_var.set('')
+        self.bg_var.set('')
+        self.lv_var.set('')
 
-            if not isExist:
-                os.makedirs(self.delimiter.join(self.path_var_output.get().split(self.delimiter)[:-1]))
-            self.image.convert('L').save(self.path_var_output.get())
-            self.output_file += 1
-        except:
-            messagebox.showerror("Error", "Invalid path",)
+        self.file_index = 0
+        self.gallery_index = 0
+        
+        self.prev_image = ''
+        self.actual_image = ''
+        self.prev_dir = ''
+        #self.output_path_var.set('')
+        #self.prev_output_path_var.set('')
+        
+        #self.max_gallery_index = 0
+
+        self.slope_var.set(1)
+        self.intercept_var.set(1)
+
+        # Set up treeview columns
+        #self.path_entry.delete(0, tk.END)
+        #self.path_var.set(sep(os.getcwd()))
+
+        #self.radio_var.set(0)
+        
+        # Populate treeview with root directory
+        #root_node = self.tree.insert("", "end", text=os.getcwd())
+        #self.populate_tree(root_node)
+        #self.delimiter = '/'
+        
+        self.contrast_var.set(1)
+        self.slope_var.set(1)
+        self.intercept_var.set(1)
+        self.manage_images()
+        self.manage_gallery()
+
+    def save_button_click(self):
+        """
+        Hemorrhage self.radio_var = 1, folder = 'H'
+        Normal self.radio_var = 2, folder = 'N'
+        Isquemic self.radio_var = 3, folder = 'I'
+        Unknown self.radio_var = 4, folder = 'U'
+        """
+        try:
+            if (self.radio_var.get() == 0):
+                messagebox.showerror("Error", "First select if the set of images are Ischemia, normal, hemorrhage or unknown in the lower left corner.")
+            if (self.output_path_var.get() == '') or not(os.path.isdir(self.output_path_var.get())):
+                messagebox.showerror("Error", "Select a valid output folder")
+            else:
+                folder = ['H','N','I','U'][self.radio_var.get()-1]
+                full_folder =  self.output_path_var.get()+'/'+folder
+                folders = os.listdir(self.output_path_var.get())
+                if not(folder in folders) or not(os.path.isdir(full_folder)):
+                    os.makedirs(full_folder)
+                list_full_folder = os.listdir(full_folder)
+                list_full_folder =  [int('0'.join(filter(str.isdigit, s))) for s in list_full_folder]
+                if len(list_full_folder) == 0:
+                    output_path = full_folder+'/0/'
+                else:
+                    output_path = full_folder+'/'+str(list_full_folder[-1]+1)+'/'
+                os.makedirs(output_path)
+                bs = int(self.bs_var.get())
+                bg = int(self.bg_var.get())    
+                lv = int(self.lv_var.get())
+
+                bs_path = sep(os.path.join(self.aux_path, self.list_files[bs%len(self.list_files)]))
+                bg_path = sep(os.path.join(self.aux_path, self.list_files[bg%len(self.list_files)]))
+                lv_path = sep(os.path.join(self.aux_path, self.list_files[lv%len(self.list_files)]))
+
+                image_list = [bs_path, bg_path, lv_path]
+                for i,f in enumerate(image_list):
+                    if '.dcm' in f:
+                        output_image = self.dcm_image(f)
+                        image = Image.fromarray(output_image)
+                        
+                    else:
+                        image = Image.open(f)
+                    image = image.convert('HSV')
+                    image.thumbnail((int(self.size.get()), int(self.size.get())))
+                    image.convert('L').save(output_path+str(i)+'.jpg')
+                self.prev_output_path_var.set('Previous set saved in '+output_path)
+            self.reset()
+        except :
+            messagebox.showerror("Error", "Error")
     
     def bs_button_click(self, event):
         if self.bs_var.get() != '' and self.file_index != int(self.bs_var.get()):
@@ -574,20 +657,8 @@ class FileBrowserGUI:
             image = new_im
 
         canvas = CanvasImage(self.image_frame,image, size= int(self.size.get()), )  # create widget
-
-        
         canvas.grid(row=0, column=0)  # show widget
         self.actual_image = full_path
-
-        if self.prev_dir != self.actual_image.split(self.delimiter)[-2]:
-                self.prev_dir = self.actual_image.split(self.delimiter)[-2]
-                self.output_dir += 1
-
-        if not '.jpg' in self.path_var_output.get().split(self.delimiter)[-1]:
-            self.path_var_output.set(self.path_var_output.get()+self.delimiter+str(self.output_dir)+self.delimiter+str(self.output_file)+'.jpg')
-        else:
-            output_path = self.delimiter.join(self.path_var_output.get().split(self.delimiter)[:-2])
-            self.path_var_output.set(output_path+self.delimiter+str(self.output_dir)+self.delimiter+str(self.output_file)+'.jpg')
 
     def gallery_scroll(self, event):
         print(event)
@@ -653,8 +724,7 @@ class FileBrowserGUI:
             #print(i,self.gallery_canvas.winfo_children())
             #print(self.gallery_canvas.winfo_children()[i])
             
-            
-                    
+              
 if __name__ == "__main__":
     root = tk.Tk()
     width, height = root.winfo_screenwidth(), root.winfo_screenheight()
