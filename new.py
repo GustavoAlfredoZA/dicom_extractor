@@ -2,7 +2,7 @@ import tkinter as tk
 import tkinter.ttk as ttk
 from tkinter.filedialog import askdirectory
 from tkinter import messagebox
-from PIL import Image, ImageTk
+from PIL import Image, ImageTk, ImageOps
 import os
 import math
 import pydicom as dicom
@@ -10,7 +10,7 @@ from zoom import AutoScrollbar, CanvasImage
 
 from os.path import sep, join
 
-def sep(path, delimiter='/'):
+def sep(path: str, delimiter : str = '/') -> str:
     if delimiter == '\\':
         aux_delimiter = '/'
     else:
@@ -63,12 +63,12 @@ class FileBrowserGUI:
         self.browse_button_output = ttk.Button(master, text="Browse output", command=self.browse_button_output_click)
         self.save_button = ttk.Button(master, text="Save", command = self.save_button_click,state='disabled')
 
-        bs_selected_path = Image.open('C:/Users/mxcgaz01/OneDrive - Kellogg Company/Documents/LIB/dicom_extractor/icons/button_brainstem_selected.png').resize((160,40))
-        bg_selected_path = Image.open('C:/Users/mxcgaz01/OneDrive - Kellogg Company/Documents/LIB/dicom_extractor/icons/button_basal-ganglia_selected.png').resize((160,40))
-        lv_selected_path = Image.open('C:/Users/mxcgaz01/OneDrive - Kellogg Company/Documents/LIB/dicom_extractor/icons/button_lateral-ventricles_selected.png').resize((160,40))
-        bs_path = Image.open('C:/Users/mxcgaz01/OneDrive - Kellogg Company/Documents/LIB/dicom_extractor/icons/button_brainstem.png').resize((160,40))
-        bg_path = Image.open('C:/Users/mxcgaz01/OneDrive - Kellogg Company/Documents/LIB/dicom_extractor/icons/button_basal-ganglia.png').resize((160,40))
-        lv_path = Image.open('C:/Users/mxcgaz01/OneDrive - Kellogg Company/Documents/LIB/dicom_extractor/icons/button_lateral-ventricles.png').resize((160,40))
+        bs_selected_path = Image.open('icons/button_brainstem_selected.png').resize((160,40))
+        bg_selected_path = Image.open('icons/button_basal-ganglia_selected.png').resize((160,40))
+        lv_selected_path = Image.open('icons/button_lateral-ventricles_selected.png').resize((160,40))
+        bs_path = Image.open('icons/button_brainstem.png').resize((160,40))
+        bg_path = Image.open('icons/button_basal-ganglia.png').resize((160,40))
+        lv_path = Image.open('icons/button_lateral-ventricles.png').resize((160,40))
 
         self.bs_selected_b_i = ImageTk.PhotoImage(bs_selected_path)
         self.bg_selected_b_i = ImageTk.PhotoImage(bg_selected_path)
@@ -206,7 +206,6 @@ class FileBrowserGUI:
         self.slope_var.set(1)
         self.intercept_var.set(1)
 
-
     def get_directory_size(self, path):
         total_size = 0
         for dirpath, dirnames, filenames in os.walk(path):
@@ -224,21 +223,29 @@ class FileBrowserGUI:
         s = round(size_bytes/p, 2)
         return "%s %s" % (s, size_name[i])
 
-    def populate_tree(self, parent):
+    def populate_tree(self, parent, full_path: str= None):
         # Get subdirectories of parent directory
-        path = self.tree.item(parent, "text")
         try:
-            directory_list = os.listdir(path)
-        except:
-            messagebox.showerror("Error", "Invalid path")
-            return
+            path = self.tree.item(parent, "text")
+            if full_path is None and os.path.isdir(path):
+                directory_list = os.listdir(path)
+            elif os.path.isdir(full_path):
+                directory_list = os.listdir(full_path)
 
-        # Populate treeview with subdirectories
-        for directory in directory_list:
-            full_path = os.path.join(path, directory)
-            if os.path.isdir(full_path):
-                node = self.tree.insert(parent, "end", text=directory)
-    
+            else: 
+                directory_list = []
+            
+            if full_path is None:
+                full_path = path
+
+            for directory in directory_list:
+                d_full_path = sep(os.path.join(full_path, directory))
+                if os.path.isdir(d_full_path):
+                    node = self.tree.insert(parent, "end", text=directory,value=d_full_path)
+                    self.populate_tree(node, d_full_path)
+        except:
+            print(Exception)
+                
     def browse_files(self):
         directory = askdirectory()
         self.path_var.set(directory)
@@ -254,16 +261,19 @@ class FileBrowserGUI:
 
     def tree_double_click(self, event):
         item = self.tree.selection()[0]
-        path = self.tree.item(item, "text")
+        path = ' '.join(self.tree.item(item, "value"))
+        
         if os.path.isdir(path):
             # Update directory size in treeview
             self.tree.set(item)
 
             # Clear image frame
+            
             for widget in self.image_frame.winfo_children():
                 widget.destroy()
             # Populate image frame with images from selected directory
             self.aux_path = path
+            print(path)
             self.populate_images(path)
             self.manage_gallery()
             self.bs_var.set('')
@@ -284,6 +294,7 @@ class FileBrowserGUI:
     def save_button_click(self):
         try:
             isExist = os.path.exists(self.delimiter.join(self.path_var_output.get().split(self.delimiter)[:-1]))
+
             if not isExist:
                 os.makedirs(self.delimiter.join(self.path_var_output.get().split(self.delimiter)[:-1]))
             self.image.convert('L').save(self.path_var_output.get())
@@ -317,16 +328,20 @@ class FileBrowserGUI:
         if self.bs_var.get() == '':
             self.bs_var.set(self.file_index)
             self.bs_selection_button.config(image=self.bs_selected_b_i)
-            self.image_frame.winfo_children()[0].winfo_children()[2].create_rectangle(0,0,canva_width,canva_height, outline= 'purple', width=10)   
+            #self.image_frame.winfo_children()[0].winfo_children()[2].create_rectangle(0,0,canva_width,canva_height, outline= 'purple', width=10)  
+            self.manage_images()
+            self.manage_gallery()
             if self.bg_var.get() != '' and self.lv_var.get() != '':
                 self.save_button.config(state='normal')    
         else:
             if self.file_index == int(self.bs_var.get()):
+                self.bs_var.set('')
                 self.manage_images()
             self.bs_var.set('')
+            self.manage_gallery()
             self.bs_selection_button.config(image=self.bs_b_i)
             self.save_button.config(state='disabled')
-    
+              
     def bg_button_click(self, event):
         if self.bg_var.get() != '' and self.file_index != int(self.bg_var.get()):
             r = messagebox.askyesno("Update", "Do you want to update the image of Basal Ganglia? ")
@@ -352,16 +367,20 @@ class FileBrowserGUI:
         if self.bg_var.get() == '':
             self.bg_var.set(self.file_index)
             self.bg_selection_button.config(image=self.bg_selected_b_i)
-            self.image_frame.winfo_children()[0].winfo_children()[2].create_rectangle(0,0,canva_width,canva_height, outline= 'orange', width=10)
+            #self.image_frame.winfo_children()[0].winfo_children()[2].create_rectangle(0,0,canva_width,canva_height, outline= 'orange', width=10)
             #self.image_frame.config(bg='orange')
+            self.manage_images()
+            self.manage_gallery()
             if self.bs_var.get() != '' and self.lv_var.get() != '':
                 self.save_button.config(state='normal')
         else:
             if self.file_index == int(self.bg_var.get()):
+                self.bg_var.set('')
                 self.manage_images()
             self.bg_var.set('')
+            self.manage_gallery()
             self.bg_selection_button.config(image=self.bg_b_i)
-            self.save_button.config(state='disabled')
+            self.save_button.config(state='disabled')          
 
     def lv_button_click(self, event):
         if self.lv_var.get() != '' and self.file_index != int(self.lv_var.get()):
@@ -389,14 +408,17 @@ class FileBrowserGUI:
         if self.lv_var.get() == '':
             self.lv_var.set(self.file_index)
             self.lv_selection_button.config(image=self.lv_selected_b_i)
-            self.image_frame.winfo_children()[0].winfo_children()[2].create_rectangle(0,0,canva_width,canva_height, outline= 'green', width=10)
+            self.manage_images()
+            self.manage_gallery()
             #self.image_frame.config(bg='green')
             if self.bs_var.get() != '' and self.bg_var.get() != '':
                 self.save_button.config(state='normal')
         else:
             if self.file_index == int(self.lv_var.get()):
+                self.lv_var.set('')
                 self.manage_images()
             self.lv_var.set('')
+            self.manage_gallery()
             self.lv_selection_button.config(image=self.lv_b_i)
             #self.image_frame.config(bg='white')
             self.save_button.config(state='disabled')
@@ -433,6 +455,11 @@ class FileBrowserGUI:
         if len(image_files) == 0:
             messagebox.showerror("Error", "No images in directory")
             return
+        
+        image_files =  [[s,int(''.join(filter(str.isdigit, s)))] for s in image_files]
+        image_files = sorted(image_files, key=lambda  t:t[1])
+        image_files = [s[0] for s in image_files]
+
         # Populate image frame with images
         self.list_files = image_files
         self.max_gallery_index = len(image_files) // 9
@@ -442,19 +469,7 @@ class FileBrowserGUI:
         self.file_index = 0
         
         full_path = os.path.join(path, image_files[0])
-        """
-        if '.dcm' in full_path:
-            ds = dicom.dcmread(full_path)
-            image = Image.fromarray(ds.pixel_array)
-        else:
-            image = Image.open(full_path)
-        image.thumbnail((300, 300))
-        photo = ImageTk.PhotoImage(image)
-        label = ttk.Label(self.image_frame, image=photo)
-        label.image = photo
-        label.pack(side="left", padx=10, pady=10)
         
-        """
         self.manage_images()
 
     def update_size(self):
@@ -480,7 +495,6 @@ class FileBrowserGUI:
         return img
 
     def get_windowing(self,data):
-        print(data)
         try:
             dicom_fields = [data[('0028','1050')].value, #window center
                             data[('0028','1051')].value, #window width
@@ -495,6 +509,8 @@ class FileBrowserGUI:
         return [self.get_first_of_dicom_field_as_int(x) for x in dicom_fields]
     
     def dcm_image(self, full_path):
+        if '\\' in full_path:
+            full_path = sep(full_path)
         ds = dicom.dcmread(full_path)
         image = ds.pixel_array
         window_center , window_width, intercept, slope = self.get_windowing(ds)
@@ -507,13 +523,25 @@ class FileBrowserGUI:
         # clear image frame
 
         self.prev_image = self.actual_image
-        print('manage images =',self.image_frame.winfo_children())
+        #print('manage images =',self.image_frame.winfo_children())
+        
+        bs, bg, lv = -1, -1, -1
+        if self.bs_var.get() != '': 
+            #print('bs')
+            bs = int(self.bs_var.get())
+        if self.bg_var.get() != '': 
+            #print('bg')
+            bg = int(self.bg_var.get())    
+        if self.lv_var.get() != '': 
+            #print('lv')
+            lv = int(self.lv_var.get())
         
         for widget in self.image_frame.winfo_children():
-            print(widget.winfo_children())
-            for widget2 in widget.winfo_children():
-                print(widget2.winfo_children())
+            #print(widget.winfo_children())
+            #for widget2 in widget.winfo_children():
+            #    print(widget2.winfo_children())
             widget.destroy()        
+        
         full_path = sep(os.path.join(self.aux_path, self.list_files[self.file_index%len(self.list_files)]))
         
         if '.dcm' in full_path:
@@ -526,28 +554,27 @@ class FileBrowserGUI:
         image = image.convert('HSV')
         image.thumbnail((int(self.size.get()), int(self.size.get())))
         self.image = image
-        canvas = CanvasImage(self.image_frame,image, size= int(self.size.get()), )  # create widget
-        canva_height = self.image_frame.winfo_height()-5
-        canva_width = self.image_frame.winfo_width()-5
         
-        print(self.bs_var.get(), self.bg_var.get(), self.lv_var.get(), self.file_index)
-        bs, bg, lv = -1, -1, -1
-        if self.bs_var.get() != '': 
-            print('bs')
-            bs = int(self.bs_var.get())
-        elif self.bg_var.get() != '': 
-            print('bg')
-            bg = int(self.bg_var.get())    
-        elif self.lv_var.get() != '': 
-            print('lv')
-            lv = int(self.lv_var.get())
- 
+        canva_height = image.size[0]+10
+        canva_width = image.size[1]+10
         if self.file_index == bs:
-            canvas.canvas.create_rectangle(0,0,canva_width,canva_height, outline= 'purple', width=10)
+            new_im = Image.new("RGB", (canva_height,canva_width),'purple')
+            box = tuple((n - o) // 2 for n, o in zip((canva_height+10,canva_width+10), (canva_height,canva_width)))
+            new_im.paste(image, box)
+            image = new_im
         elif self.file_index == bg:
-            canvas.canvas.create_rectangle(0,0,canva_width,canva_height, outline= 'orange', width=10)
+            new_im = Image.new("RGB", (canva_height,canva_width),'orange')
+            box = tuple((n - o) // 2 for n, o in zip((canva_height+10,canva_width+10), (canva_height,canva_width)))
+            new_im.paste(image, box)
+            image = new_im
         elif self.file_index == lv:
-            canvas.canvas.create_rectangle(0,0,canva_width,canva_height, outline= 'green', width=10)
+            new_im = Image.new("RGB", (canva_height,canva_width),'green')
+            box = tuple((n - o) // 2 for n, o in zip((canva_height+10,canva_width+10), (canva_height,canva_width)))
+            new_im.paste(image, box)
+            image = new_im
+
+        canvas = CanvasImage(self.image_frame,image, size= int(self.size.get()), )  # create widget
+
         
         canvas.grid(row=0, column=0)  # show widget
         self.actual_image = full_path
@@ -576,6 +603,16 @@ class FileBrowserGUI:
         start_index = self.gallery_index*9
         sublist = self.list_files[start_index:min(start_index+9, len(self.list_files))]
         row = 0
+
+        bs, bg, lv = -1, -1, -1
+        if self.bs_var.get() != '':
+            bs = int(self.bs_var.get())
+        if self.bg_var.get() != '':
+            bg = int(self.bg_var.get())    
+        if self.lv_var.get() != '':
+            lv = int(self.lv_var.get())
+        
+        
         for i, path in enumerate(sublist):
             full_path = os.path.join(self.aux_path, path)
             if '.dcm' in full_path:
@@ -584,14 +621,39 @@ class FileBrowserGUI:
             else:
                 image = Image.open(full_path)
             image.thumbnail((100, 100))
+
+            
+            canva_height = image.size[0]+10
+            canva_width = image.size[1]+10
+            if i+start_index == bs:
+                new_im = Image.new("RGB", (canva_height,canva_width),'purple')
+                box = tuple((n - o) // 2 for n, o in zip((canva_height+10,canva_width+10), (canva_height,canva_width)))
+                new_im.paste(image, box)
+                image = new_im
+            elif i+start_index == bg:
+                new_im = Image.new("RGB", (canva_height,canva_width),'orange')
+                box = tuple((n - o) // 2 for n, o in zip((canva_height+10,canva_width+10), (canva_height,canva_width)))
+                new_im.paste(image, box)
+                image = new_im
+            elif i+start_index == lv:
+                new_im = Image.new("RGB", (canva_height,canva_width),'green')
+                box = tuple((n - o) // 2 for n, o in zip((canva_height+10,canva_width+10), (canva_height,canva_width)))
+                new_im.paste(image, box)
+                image = new_im
+            
             photo = ImageTk.PhotoImage(image)
             label = ttk.Label(self.gallery_canvas, image=photo)
             label.bind("<Button-1>", lambda event, index=start_index+i: self.gallery_click(event, index))
             label.image = photo
             label.grid(row=row, column=i%3, padx=5, pady=5)
+            
+        
             if i%3 == 2:
                 row += 1
-     
+            #print(i,self.gallery_canvas.winfo_children())
+            #print(self.gallery_canvas.winfo_children()[i])
+            
+            
                     
 if __name__ == "__main__":
     root = tk.Tk()
