@@ -26,7 +26,7 @@ class FileBrowserGUI:
         self.size = tk.IntVar()
         self.size.set(500)
         self.path_var = tk.StringVar()
-        self.path_entry = ttk.Entry(master, textvariable=self.path_var)
+        self.path_entry = ttk.Entry(master, textvariable=self.path_var, width= 50)
         
         self.contrast_var = tk.DoubleVar()
         self.slope_var = tk.DoubleVar()
@@ -62,7 +62,7 @@ class FileBrowserGUI:
         self.intercept_entry = ttk.Entry(self.settings_frame, textvariable=self.intercept_var)
         
         # OutPut 
-        self.path_entry_output = ttk.Entry(master, textvariable=self.output_path_var)
+        self.path_entry_output = ttk.Entry(master, textvariable=self.output_path_var, width= 50)
         self.browse_button_output = ttk.Button(master, text="Browse output", command=self.browse_button_output_click)
         self.prev_path_label = ttk.Label(master, textvariable=self.prev_output_path_var)
         self.save_button = ttk.Button(master, text="Save", command = self.save_button_click,state='disabled')
@@ -105,7 +105,7 @@ class FileBrowserGUI:
         self.gallery_frame_vbar.grid(row=0, column=1, sticky='ns')
         self.gallery_canvas = tk.Canvas(self.gallery_frame,
                                 yscrollcommand=self.gallery_frame_vbar.set,width=100, height=100)
-        self.gallery_canvas.grid(row=0, column=0, sticky='nswe')
+        self.gallery_canvas.grid(row=0, column=0, sticky='nswe',padx=(50,50), pady=0,ipadx=0)
         self.gallery_canvas.update()
         self.gallery_frame_vbar.configure(command=self.gallery_canvas.yview)
         
@@ -116,15 +116,44 @@ class FileBrowserGUI:
         self.u_radio_button = ttk.Radiobutton(self.radio_button_frame, text="Unknown", variable=self.radio_var, value=4)
         
         # Lay out widgets
-        self.path_entry.grid(row=0, column=0, sticky="we")
-        self.browse_button.grid(row=0, column=1, sticky="e")
-        self.tree.grid(row=1, column=0, sticky="nsew")
-        self.image_frame.grid(row=1, column=1, sticky="nsew", columnspan= 3, padx=1,pady=1, ipadx=1, ipady=1)
+        self.path_entry.grid(row=0, column=0, sticky="e", padx=(10,0))
+        self.browse_button.grid(row=0, column=1, sticky="w", padx=(1, 50))
+        self.tree.grid(row=1, column=0, sticky="nsew",padx=50)
+        self.image_frame.grid(row=1, column=1, sticky="nsew", columnspan= 3, padx=50,pady=0, ipadx=1, ipady=0)
 
-        self.browse_button_output.grid(row=4, column=1, sticky="we")
-        self.path_entry_output.grid(row=4,column=0, sticky="we")
+        self.path_entry_output.grid(row=4,column=0, sticky="e", padx=(10,0))
+        self.browse_button_output.grid(row=4, column=1, sticky="w", padx=(1, 50))
         self.prev_path_label.grid(row=5, column = 0, sticky="we")
 
+        self.selection_frame.grid(row=2, column=1, sticky="we", columnspan=2,padx=50)
+        self.bs_selection_button.grid(row=0, column=0, sticky="we")
+        self.bg_selection_button.grid(row=0, column=1, sticky="we",padx=50)
+        self.lv_selection_button.grid(row=0, column=2, sticky="we")
+        self.selection_frame.columnconfigure(0, weight=1)
+        self.selection_frame.columnconfigure(1, weight=1)
+        self.selection_frame.columnconfigure(2, weight=1)
+
+        next_button.grid(row=3, column=3, sticky="e")
+        self.save_button.grid(row=3, column=2, sticky="w")
+        prev_button.grid(row=3, column=1, sticky="w")
+        
+        self.next_gallery_button.grid(row=0, column=2, sticky="e")
+        self.prev_gallery_button.grid(row=0, column=1, sticky="w")
+        self.gallery_buttons_frame.grid(row=2, column=4, sticky="we")
+
+        self.gallery_frame.grid(row=1, column=4,sticky='nswe', padx=5,pady=0, ipadx=5, ipady=0)
+        
+        self.gallery_frame.rowconfigure(0, weight=1)
+        self.gallery_frame.columnconfigure(0, weight=1)
+        
+        self.radio_button_frame.grid(row=4, column=2, sticky="we", rowspan=2, columnspan=1)
+        self.h_radio_button.grid(row=0, column=0, sticky="we", padx=25, pady=20)
+        self.n_radio_button.grid(row=1, column=1, sticky="we", padx=25, pady=20)
+        self.i_radio_button.grid(row=0, column=1, sticky="we", padx=25, pady=20)
+        self.u_radio_button.grid(row=1, column=0, sticky="we", padx=25, pady=20)
+
+        self.settings_frame.grid(row=4, column=4, sticky="w", columnspan=1, rowspan=2, padx=(10, 10), pady=(10, 10))
+        
         self.size_label.grid(row=0, column=0, sticky="w")
         self.size_entry.grid(row=0, column=1, sticky="we")
         self.slope_entry.grid(row=1, column=1, sticky="we")
@@ -133,34 +162,8 @@ class FileBrowserGUI:
         self.intercept_label.grid(row=2, column=0, sticky="w")
         self.contrast_entry.grid(row=3, column=1, sticky="we")
         self.contrast_label.grid(row=3, column=0, sticky="w")
-        self.settings_frame.grid(row=6, column=0, sticky="w", columnspan=1, rowspan=2)
-        self.size_update_button.grid(row=6, column=2, sticky="e")
-
-        self.selection_frame.grid(row=2, column=1, sticky="we", columnspan=2)
-        self.bs_selection_button.grid(row=0, column=0, sticky="we")
-        self.bg_selection_button.grid(row=0, column=1, sticky="we")
-        self.lv_selection_button.grid(row=0, column=2, sticky="we")
-        self.selection_frame.columnconfigure(0, weight=1)
-        self.selection_frame.columnconfigure(1, weight=1)
-        self.selection_frame.columnconfigure(2, weight=1)
-
-        next_button.grid(row=3, column=3, sticky="e")
-        prev_button.grid(row=3, column=1, sticky="w")
         
-        self.next_gallery_button.grid(row=0, column=2, sticky="e")
-        self.prev_gallery_button.grid(row=0, column=1, sticky="w")
-        self.gallery_buttons_frame.grid(row=2, column=4, sticky="we")
-
-        self.gallery_frame.grid(row=1, column=4,sticky='nswe', padx=5,pady=5, ipadx=5, ipady=5)
-        
-        self.gallery_frame.rowconfigure(0, weight=1)
-        self.gallery_frame.columnconfigure(0, weight=1)
-        
-        self.radio_button_frame.grid(row=4, column=3, sticky="we", rowspan=2, columnspan=1)
-        self.h_radio_button.grid(row=0, column=0, sticky="we", padx=25, pady=20)
-        self.n_radio_button.grid(row=1, column=1, sticky="we", padx=25, pady=20)
-        self.i_radio_button.grid(row=0, column=1, sticky="we", padx=25, pady=20)
-        self.u_radio_button.grid(row=1, column=0, sticky="we", padx=25, pady=20)
+        self.size_update_button.grid(row=6, column=4, sticky="w", padx=(10, 50), pady=(10, 50))
         
         self.master.grid_columnconfigure(0,weight=1)
         self.master.grid_columnconfigure(1,weight=1)
@@ -174,7 +177,6 @@ class FileBrowserGUI:
         self.master.grid_rowconfigure(4,weight=1)
         self.master.grid_rowconfigure(5,weight=1)
         self.master.grid_rowconfigure(6,weight=1)
-        self.master.grid_rowconfigure(7,weight=1)
 
         self.gallery_buttons_frame.grid_columnconfigure(0,weight=1)
         self.gallery_buttons_frame.grid_columnconfigure(1,weight=1)
@@ -191,7 +193,7 @@ class FileBrowserGUI:
         self.output_path_var.set('')
         self.prev_output_path_var.set('')
 
-        self.save_button.grid(row=3, column=2, sticky="w")
+        
         self.gallery_index = 0
         self.max_gallery_index = 0
 
@@ -238,22 +240,26 @@ class FileBrowserGUI:
                 directory_list = os.listdir(path)
             elif os.path.isdir(full_path):
                 directory_list = os.listdir(full_path)
-
             else: 
                 directory_list = []
-            
             if full_path is None:
                 full_path = path
-
+            i_var = False
             for directory in directory_list:
+                ic_var = False
                 d_full_path = sep(os.path.join(full_path, directory))
                 if os.path.isdir(d_full_path):
                     node = self.tree.insert(parent, "end", text=directory,value=d_full_path)
-                    self.populate_tree(node, d_full_path)
-                else:
-                    ...
-        except:
-            print(Exception)
+                    ic_var = self.populate_tree(node, d_full_path)
+                    sub_f = [f for f in os.listdir(d_full_path) if os.path.isdir(os.path.join(d_full_path, f))]
+                    image_files = [f for f in os.listdir(d_full_path) if os.path.isfile(os.path.join(d_full_path, f)) and f.lower().endswith((".jpg", ".jpeg", ".png", ".gif", ".dcm" ))]
+                    if len(image_files)>0:
+                        i_var = True
+                    if (not(ic_var) and not(i_var)) or (len(sub_f)==0 and len(image_files)==0):
+                        self.tree.delete(node)
+            return i_var
+        except :
+            messagebox.showerror("Error", "Error")
                 
     def browse_files(self):
         directory = askdirectory()
@@ -293,6 +299,7 @@ class FileBrowserGUI:
             self.bg_selection_button.config(image=self.bg_b_i)
             self.lv_selection_button.config(image=self.lv_b_i)
             self.save_button.config(state=tk.DISABLED)
+            self.reset()
   
     def browse_button_output_click(self):
         directory = askdirectory()
@@ -319,6 +326,11 @@ class FileBrowserGUI:
         self.slope_var.set(1)
         self.intercept_var.set(1)
 
+        self.bs_selection_button.config(image=self.bs_b_i)
+        self.bg_selection_button.config(image=self.bg_b_i)
+        self.lv_selection_button.config(image=self.lv_b_i)
+
+
         # Set up treeview columns
         #self.path_entry.delete(0, tk.END)
         #self.path_var.set(sep(os.getcwd()))
@@ -329,6 +341,7 @@ class FileBrowserGUI:
         #root_node = self.tree.insert("", "end", text=os.getcwd())
         #self.populate_tree(root_node)
         #self.delimiter = '/'
+        self.save_button.config(state='disabled')
         
         self.contrast_var.set(1)
         self.slope_var.set(1)
@@ -345,9 +358,11 @@ class FileBrowserGUI:
         """
         try:
             if (self.radio_var.get() == 0):
-                messagebox.showerror("Error", "First select if the set of images are Ischemia, normal, hemorrhage or unknown in the lower left corner.")
+                messagebox.showerror("Error", "First select if the set of images are Ischemia, normal, hemorrhage or unknown.")
+                return
             if (self.output_path_var.get() == '') or not(os.path.isdir(self.output_path_var.get())):
                 messagebox.showerror("Error", "Select a valid output folder")
+                return
             else:
                 folder = ['H','N','I','U'][self.radio_var.get()-1]
                 full_folder =  self.output_path_var.get()+'/'+folder
@@ -381,7 +396,7 @@ class FileBrowserGUI:
                     image.thumbnail((int(self.size.get()), int(self.size.get())))
                     image.convert('L').save(output_path+str(i)+'.jpg')
                 self.prev_output_path_var.set('Previous set saved in '+output_path)
-            self.reset()
+                self.reset()
         except :
             messagebox.showerror("Error", "Error")
     
@@ -406,12 +421,10 @@ class FileBrowserGUI:
             else:
                 return None
         
-        canva_height = self.image_frame.winfo_children()[0].winfo_children()[2].winfo_height()
-        canva_width = self.image_frame.winfo_children()[0].winfo_children()[2].winfo_width()
+        
         if self.bs_var.get() == '':
             self.bs_var.set(self.file_index)
             self.bs_selection_button.config(image=self.bs_selected_b_i)
-            #self.image_frame.winfo_children()[0].winfo_children()[2].create_rectangle(0,0,canva_width,canva_height, outline= 'purple', width=10)  
             self.manage_images()
             self.manage_gallery()
             if self.bg_var.get() != '' and self.lv_var.get() != '':
@@ -445,13 +458,10 @@ class FileBrowserGUI:
                 self.lv_button_click(event)
             else:
                 return None
-        canva_height = self.image_frame.winfo_children()[0].winfo_children()[2].winfo_height()
-        canva_width = self.image_frame.winfo_children()[0].winfo_children()[2].winfo_width()
+        
         if self.bg_var.get() == '':
             self.bg_var.set(self.file_index)
             self.bg_selection_button.config(image=self.bg_selected_b_i)
-            #self.image_frame.winfo_children()[0].winfo_children()[2].create_rectangle(0,0,canva_width,canva_height, outline= 'orange', width=10)
-            #self.image_frame.config(bg='orange')
             self.manage_images()
             self.manage_gallery()
             if self.bs_var.get() != '' and self.lv_var.get() != '':
@@ -485,8 +495,6 @@ class FileBrowserGUI:
                 self.bg_button_click(event)
             else:
                 return None
-        canva_height = self.image_frame.winfo_children()[0].winfo_children()[2].winfo_height()
-        canva_width = self.image_frame.winfo_children()[0].winfo_children()[2].winfo_width()
 
         if self.lv_var.get() == '':
             self.lv_var.set(self.file_index)
@@ -503,7 +511,6 @@ class FileBrowserGUI:
             self.lv_var.set('')
             self.manage_gallery()
             self.lv_selection_button.config(image=self.lv_b_i)
-            #self.image_frame.config(bg='white')
             self.save_button.config(state='disabled')
 
     def next_button_click(self):
@@ -539,7 +546,7 @@ class FileBrowserGUI:
             messagebox.showerror("Error", "No images in directory")
             return
         
-        image_files =  [[s,int(''.join(filter(str.isdigit, s)))] for s in image_files]
+        image_files =  [[s,int(''.join(filter(str.isdigit, '0'+s)))] for s in image_files]
         image_files = sorted(image_files, key=lambda  t:t[1])
         image_files = [s[0] for s in image_files]
 
