@@ -2,11 +2,20 @@ import tkinter as tk
 import tkinter.ttk as ttk
 from tkinter.filedialog import askdirectory
 from tkinter import messagebox
-from PIL import Image, ImageTk, ImageOps
+from PIL import Image, ImageTk
 import os
 import math
+import numpy as np
 import pydicom as dicom
 from zoom import AutoScrollbar, CanvasImage
+import cv2
+import imageio
+from skimage import data, img_as_float
+from skimage import exposure
+import matplotlib.pyplot as plt
+from sklearn import preprocessing as pre
+import nibabel as nib
+
 
 from os.path import sep, join
 
@@ -24,11 +33,11 @@ class FileBrowserGUI:
         
         # Create widgets
         self.size = tk.IntVar()
-        self.size.set(500)
+        self.size.set(512)
         self.path_var = tk.StringVar()
         self.path_entry = ttk.Entry(master, textvariable=self.path_var, width= 50)
         
-        self.contrast_var = tk.DoubleVar()
+        self.contrast_var = tk.IntVar()
         self.slope_var = tk.DoubleVar()
         self.intercept_var = tk.DoubleVar()
         
@@ -49,17 +58,16 @@ class FileBrowserGUI:
         self.tree = ttk.Treeview(master)
         self.tree.bind("<Double-1>", self.tree_double_click)
         self.image_frame = ttk.Frame(master, width = 200, height = 200)
-        self.size_update_button = ttk.Button(master, text="Update", command=self.update_size)
+        
 
         self.settings_frame = ttk.Frame(master, border=5,relief='solid',height=100)
-        self.contrast_label = ttk.Label(self.settings_frame, text="Contrast = " )
-        self.contrast_entry = ttk.Entry(self.settings_frame, textvariable=self.contrast_var)
         self.size_label = ttk.Label(self.settings_frame, text="Size = " )
         self.size_entry = ttk.Entry(self.settings_frame, textvariable=self.size)
-        self.slope_label = ttk.Label(self.settings_frame, text="Slope = " )
-        self.slope_entry = ttk.Entry(self.settings_frame, textvariable=self.slope_var)
-        self.intercept_label = ttk.Label(self.settings_frame, text="Intercept = " )
-        self.intercept_entry = ttk.Entry(self.settings_frame, textvariable=self.intercept_var)
+        self.o_c_radio_button = ttk.Radiobutton(self.settings_frame, text="Original", variable=self.contrast_var, value=0)
+        #self.s_c_radio_button = ttk.Radiobutton(self.settings_frame, text="Contrast stretching", variable=self.contrast_var, value=1)
+        self.e_c_radio_button = ttk.Radiobutton(self.settings_frame, text="Histogram equalization", variable=self.contrast_var, value=2)
+        #self.a_c_radio_button = ttk.Radiobutton(self.settings_frame, text="Adaptive equaliztion", variable=self.contrast_var, value=3)
+        self.size_update_button = ttk.Button(self.settings_frame, text="Update", command=self.update_size)
         
         # OutPut 
         self.path_entry_output = ttk.Entry(master, textvariable=self.output_path_var, width= 50)
@@ -152,18 +160,21 @@ class FileBrowserGUI:
         self.i_radio_button.grid(row=0, column=1, sticky="we", padx=25, pady=20)
         self.u_radio_button.grid(row=1, column=0, sticky="we", padx=25, pady=20)
 
-        self.settings_frame.grid(row=4, column=4, sticky="w", columnspan=1, rowspan=2, padx=(10, 10), pady=(10, 10))
+        self.settings_frame.grid(row=4, column=4, sticky="w", columnspan=1, rowspan=6, padx=(10, 10), pady=(10, 10))
         
         self.size_label.grid(row=0, column=0, sticky="w")
         self.size_entry.grid(row=0, column=1, sticky="we")
-        self.slope_entry.grid(row=1, column=1, sticky="we")
-        self.slope_label.grid(row=1, column=0, sticky="w")
-        self.intercept_entry.grid(row=2, column=1, sticky="we")
-        self.intercept_label.grid(row=2, column=0, sticky="w")
-        self.contrast_entry.grid(row=3, column=1, sticky="we")
-        self.contrast_label.grid(row=3, column=0, sticky="w")
-        
-        self.size_update_button.grid(row=6, column=4, sticky="w", padx=(10, 50), pady=(10, 50))
+        #self.slope_entry.grid(row=1, column=1, sticky="we")
+        #self.slope_label.grid(row=1, column=0, sticky="w")
+        #self.intercept_entry.grid(row=2, column=1, sticky="we")
+        #self.intercept_label.grid(row=2, column=0, sticky="w")
+        self.o_c_radio_button.grid(row=1, column=0, sticky="w")
+        #self.s_c_radio_button.grid(row=2, column=0, sticky="w")
+        self.e_c_radio_button.grid(row=3, column=0, sticky="w")
+        #self.a_c_radio_button.grid(row=4, column=0, sticky="w")
+        #self.contrast_entry.grid(row=3, column=1, sticky="we")
+        #self.contrast_label.grid(row=3, column=0, sticky="w")
+        self.size_update_button.grid(row=5, column=0, sticky="w", padx=(10, 50), pady=(10, 50))
         
         self.master.grid_columnconfigure(0,weight=1)
         self.master.grid_columnconfigure(1,weight=1)
@@ -197,9 +208,6 @@ class FileBrowserGUI:
         self.gallery_index = 0
         self.max_gallery_index = 0
 
-        self.slope_var.set(1)
-        self.intercept_var.set(1)
-
         # Set up treeview columns
         self.path_entry.delete(0, tk.END)
         self.path_var.set(sep(os.getcwd()))
@@ -211,9 +219,9 @@ class FileBrowserGUI:
         self.populate_tree(root_node)
         self.delimiter = '/'
         
-        self.contrast_var.set(1)
-        self.slope_var.set(1)
-        self.intercept_var.set(1)
+        #self.contrast_var.set(0)
+        #self.slope_var.set(1)
+        #self.intercept_var.set(1)
 
     def get_directory_size(self, path):
         total_size = 0
@@ -244,7 +252,7 @@ class FileBrowserGUI:
                 directory_list = []
             if full_path is None:
                 full_path = path
-            i_var = False
+            ic_var = False
             for directory in directory_list:
                 ic_var = False
                 d_full_path = sep(os.path.join(full_path, directory))
@@ -254,12 +262,12 @@ class FileBrowserGUI:
                     sub_f = [f for f in os.listdir(d_full_path) if os.path.isdir(os.path.join(d_full_path, f))]
                     image_files = [f for f in os.listdir(d_full_path) if os.path.isfile(os.path.join(d_full_path, f)) and f.lower().endswith((".jpg", ".jpeg", ".png", ".gif", ".dcm" ))]
                     if len(image_files)>0:
-                        i_var = True
-                    if (not(ic_var) and not(i_var)) or (len(sub_f)==0 and len(image_files)==0):
+                        ic_var = True
+                    if (not(ic_var)  ) or (len(sub_f)==0 and len(image_files)==0):
                         self.tree.delete(node)
-            return i_var
-        except :
-            messagebox.showerror("Error", "Error")
+            return ic_var
+        except Exception as e:
+            messagebox.showerror("Error", "Error\n"+ e)
                 
     def browse_files(self):
         directory = askdirectory()
@@ -343,7 +351,7 @@ class FileBrowserGUI:
         #self.delimiter = '/'
         self.save_button.config(state='disabled')
         
-        self.contrast_var.set(1)
+        self.contrast_var.set(0)
         self.slope_var.set(1)
         self.intercept_var.set(1)
         self.manage_images()
@@ -575,7 +583,7 @@ class FileBrowserGUI:
             return int(x)
 
     def window_image(self, img, window_center,window_width, intercept, slope, rescale=True):
-        img = (img*(slope*self.slope_var.get()) +(intercept+self.intercept_var.get())) #for translation adjustments given in the dicom file. 
+        img = (img*slope +intercept) #for translation adjustments given in the dicom file. 
         img_min = window_center - window_width//2 #minimum HU level
         img_max = window_center + window_width//2 #maximum HU level
         img[img<img_min] = img_min #set img_min for all HU levels less than minimum HU level
@@ -602,10 +610,20 @@ class FileBrowserGUI:
         if '\\' in full_path:
             full_path = sep(full_path)
         ds = dicom.dcmread(full_path)
+        
         image = ds.pixel_array
         window_center , window_width, intercept, slope = self.get_windowing(ds)
         output = self.window_image(image, window_center, window_width, intercept, slope, rescale = False)
-        return output * self.contrast_var.get()
+
+        contrast = self.contrast_var.get()
+        if contrast == 1:
+            p2, p98 = np.percentile(output, (10, 90))
+            output = exposure.rescale_intensity(output, in_range=(p2, p98))    
+        elif contrast == 2:
+            output = pre.MinMaxScaler().fit_transform(output)
+            output = exposure.equalize_hist(output)   
+        output = pre.MinMaxScaler((0,255)).fit_transform(output)
+        return output
 
     def manage_images(self):
         # Get image files in directory
@@ -613,23 +631,16 @@ class FileBrowserGUI:
         # clear image frame
 
         self.prev_image = self.actual_image
-        #print('manage images =',self.image_frame.winfo_children())
         
         bs, bg, lv = -1, -1, -1
         if self.bs_var.get() != '': 
-            #print('bs')
             bs = int(self.bs_var.get())
         if self.bg_var.get() != '': 
-            #print('bg')
             bg = int(self.bg_var.get())    
         if self.lv_var.get() != '': 
-            #print('lv')
             lv = int(self.lv_var.get())
         
         for widget in self.image_frame.winfo_children():
-            #print(widget.winfo_children())
-            #for widget2 in widget.winfo_children():
-            #    print(widget2.winfo_children())
             widget.destroy()        
         
         full_path = sep(os.path.join(self.aux_path, self.list_files[self.file_index%len(self.list_files)]))
@@ -637,13 +648,11 @@ class FileBrowserGUI:
         if '.dcm' in full_path:
             output_image = self.dcm_image(full_path)
             image = Image.fromarray(output_image)
-            
+                      
         else:
             image = Image.open(full_path)
         
-        image = image.convert('HSV')
-        image.thumbnail((int(self.size.get()), int(self.size.get())))
-        self.image = image
+        image.thumbnail((int(self.size.get()), int(self.size.get())), Image.Resampling.LANCZOS)
         
         canva_height = image.size[0]+10
         canva_width = image.size[1]+10
