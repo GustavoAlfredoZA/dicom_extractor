@@ -224,7 +224,6 @@ class FileBrowserGUI:
         self.navigation_frame.grid_columnconfigure(0,weight=1)
         self.navigation_frame.grid_columnconfigure(1,weight=1)
         self.navigation_frame.grid_columnconfigure(2,weight=1)
-
         
         ############# Var Setup #############
         self.bs_var.set('')
