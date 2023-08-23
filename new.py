@@ -77,23 +77,11 @@ class FileBrowserGUI:
         self.tree.bind("<Double-1>", self.tree_double_click)
         self.image_frame = ttk.Frame(self.master, width = 200, height = 200)
         
-        ############# Settings #############
-        self.settings_frame = ttk.Frame(self.master, border=5,relief='solid',height=100)
-        self.size_label = ttk.Label(self.settings_frame, text="Size = " )
-        self.size_entry = ttk.Entry(self.settings_frame, textvariable=self.size)
-        self.o_c_radio_button = ttk.Radiobutton(self.settings_frame, text="Original", variable=self.contrast_var, value=0)
-        #self.s_c_radio_button = ttk.Radiobutton(self.settings_frame, text="Contrast stretching", variable=self.contrast_var, value=1)
-        self.e_c_radio_button = ttk.Radiobutton(self.settings_frame, text="Histogram equalization", variable=self.contrast_var, value=2)
-        #self.a_c_radio_button = ttk.Radiobutton(self.settings_frame, text="Adaptive equaliztion", variable=self.contrast_var, value=3)
-        self.size_update_button = ttk.Button(self.settings_frame, text="Update", command=self.update_size)
-        
-        
         ############# Output #############
         self.path_entry_output = ttk.Entry(self.master, textvariable=self.output_path_var, width= 50)
         self.browse_button_output = ttk.Button(self.master, text="Browse output", command=self.browse_button_output_click)
         self.prev_path_label = ttk.Label(self.master, textvariable=self.prev_output_path_var)
-        self.save_button = ttk.Button(self.master, text="Save", command = self.save_button_click,state='disabled')
-        
+                
         ############# Images #############
         bs_selected_path = Image.open(bs_selected_file).resize((160,40))
         bg_selected_path = Image.open(bg_selected_file).resize((160,40))
@@ -110,7 +98,7 @@ class FileBrowserGUI:
         self.lv_b_i = ImageTk.PhotoImage(lv_path)
         
         ############# Selection #############
-        self.selection_frame = tk.Canvas(self.master) 
+        self.selection_frame = tk.Canvas(self.master, border=0,relief='solid',height=100)
         self.bs_selection_button = ttk.Label(self.selection_frame, image=self.bs_b_i)
         self.bg_selection_button = ttk.Label(self.selection_frame, image=self.bg_b_i)
         self.lv_selection_button = ttk.Label(self.selection_frame, image=self.lv_b_i)
@@ -119,22 +107,24 @@ class FileBrowserGUI:
         self.bg_selection_button.bind("<Button-1>", self.bg_button_click)
         self.lv_selection_button.bind("<Button-1>", self.lv_button_click)
         
-        ############# Gallery #############
-        next_button = ttk.Button(self.master, text="Next", command = self.next_button_click)
-        prev_button = ttk.Button(self.master, text="Previous", command = self.prev_button_click)
+        ############# Navigation #############
+        self.navigation_frame = ttk.Frame(self.master, height=100)
+        next_button = ttk.Button(self.navigation_frame, text="Next", command = self.next_button_click)
+        prev_button = ttk.Button(self.navigation_frame, text="Previous", command = self.prev_button_click)
+        self.save_button = ttk.Button(self.navigation_frame, text="Save", command = self.save_button_click,state='disabled')
 
-        self.gallery_buttons_frame = ttk.Frame(self.master)  
+        self.gallery_buttons_frame = ttk.Frame(self.master, border=5,relief='solid',height=100)  
         self.prev_gallery_button = ttk.Button(self.gallery_buttons_frame, text="^", command = self.prev_gallery_button_click, state='disabled')
         self.next_gallery_button = ttk.Button(self.gallery_buttons_frame, text="v", command = self.next_gallery_button_click, state='disabled')
         
         self.gallery_frame = ttk.Frame(self.master, border=5,relief='solid',height=100)
-        self.gallery_frame.config(height=200)
+        self.gallery_frame.config(height=100)
         self.gallery_frame_vbar1 = ttk.Scrollbar(self.gallery_frame, orient='vertical', command=self.gallery_scroll)
         self.gallery_frame_vbar = ttk.Scrollbar(self.gallery_frame, orient='vertical', command=self.gallery_scroll)
         self.gallery_frame_vbar.grid(row=0, column=1, sticky='ns')
         self.gallery_canvas = tk.Canvas(self.gallery_frame,
                                 yscrollcommand=self.gallery_frame_vbar.set,width=100, height=100)
-        self.gallery_canvas.grid(row=0, column=0, sticky='nswe',padx=(50,50), pady=0,ipadx=0)
+        self.gallery_canvas.grid(row=0, column=0, sticky='nswe',padx=(50,50), ipadx=10, pady=0, ipady=0)
         self.gallery_canvas.update()
         self.gallery_frame_vbar.configure(command=self.gallery_canvas.yview)
         
@@ -145,6 +135,16 @@ class FileBrowserGUI:
         self.i_radio_button = ttk.Radiobutton(self.radio_button_frame, text="Isquemic", variable=self.radio_var, value=3)
         self.u_radio_button = ttk.Radiobutton(self.radio_button_frame, text="Unknown", variable=self.radio_var, value=4)
         
+        ############# Settings #############
+        self.settings_frame = ttk.Frame(self.master, height=100)
+        self.size_label = ttk.Label(self.settings_frame, text="Size = " )
+        self.size_entry = ttk.Entry(self.settings_frame, textvariable=self.size)
+        self.o_c_radio_button = ttk.Radiobutton(self.settings_frame, text="Original", variable=self.contrast_var, value=0)
+        #self.s_c_radio_button = ttk.Radiobutton(self.settings_frame, text="Contrast stretching", variable=self.contrast_var, value=1)
+        self.e_c_radio_button = ttk.Radiobutton(self.settings_frame, text="Histogram equalization", variable=self.contrast_var, value=2)
+        #self.a_c_radio_button = ttk.Radiobutton(self.settings_frame, text="Adaptive equaliztion", variable=self.contrast_var, value=3)
+        self.size_update_button = ttk.Button(self.settings_frame, text="Update", command=self.update_size)
+
         ############# Layout #############
         self.path_entry.grid(row=0, column=0, sticky="e", padx=(10,0))
         self.browse_button.grid(row=0, column=1, sticky="w", padx=(1, 50))
@@ -156,7 +156,7 @@ class FileBrowserGUI:
         self.prev_path_label.grid(row=5, column = 0, sticky="we")
 
         ############# Layout Selection #############
-        self.selection_frame.grid(row=2, column=1, sticky="we", columnspan=2,padx=50)
+        self.selection_frame.grid(row=2, column=1, sticky="we", columnspan=2,ipadx=60, ipady=10)
         self.bs_selection_button.grid(row=0, column=0, sticky="we")
         self.bg_selection_button.grid(row=0, column=1, sticky="we",padx=50)
         self.lv_selection_button.grid(row=0, column=2, sticky="we")
@@ -164,28 +164,30 @@ class FileBrowserGUI:
         self.selection_frame.columnconfigure(1, weight=1)
         self.selection_frame.columnconfigure(2, weight=1)
 
-        next_button.grid(row=3, column=3, sticky="e")
-        self.save_button.grid(row=3, column=2, sticky="w")
-        prev_button.grid(row=3, column=1, sticky="w")
+        ############# Layout Navigation #############
+        self.navigation_frame.grid(row = 3, column=1, sticky="we", columnspan=2, ipady=10)
+        next_button.grid(row=0, column=2, sticky="w")
+        self.save_button.grid(row=0, column=1, sticky="we")
+        prev_button.grid(row=0, column=0, sticky="e")
         
-        self.next_gallery_button.grid(row=0, column=2, sticky="e")
-        self.prev_gallery_button.grid(row=0, column=1, sticky="w")
-        self.gallery_buttons_frame.grid(row=2, column=4, sticky="we")
+        self.gallery_buttons_frame.grid(row=2, column=4, sticky="nswe", columnspan=1, padx=50, pady=0)
+        self.next_gallery_button.grid(row=0, column=1, sticky="e")
+        self.prev_gallery_button.grid(row=0, column=0, sticky="w")
 
         self.gallery_frame.grid(row=1, column=4,sticky='nswe', padx=5,pady=0, ipadx=5, ipady=0)
         
         self.gallery_frame.rowconfigure(0, weight=1)
         self.gallery_frame.columnconfigure(0, weight=1)
         
-        ############## set label #############
-        self.radio_button_frame.grid(row=4, column=2, sticky="we", rowspan=2, columnspan=1)
-        self.h_radio_button.grid(row=0, column=0, sticky="we", padx=25, pady=20)
-        self.n_radio_button.grid(row=1, column=1, sticky="we", padx=25, pady=20)
-        self.i_radio_button.grid(row=0, column=1, sticky="we", padx=25, pady=20)
-        self.u_radio_button.grid(row=1, column=0, sticky="we", padx=25, pady=20)
+        ############## Layout set label #############
+        self.radio_button_frame.grid(row=4, column=2, sticky="nw", rowspan=2, columnspan=1)
+        self.h_radio_button.grid(row=0, column=0, sticky="we")#, ipadx=25, ipady=20)
+        self.n_radio_button.grid(row=1, column=1, sticky="we")#, ipadx=25, ipady=20)
+        self.i_radio_button.grid(row=0, column=1, sticky="we")#, ipadx=25, ipady=20)
+        self.u_radio_button.grid(row=1, column=0, sticky="we")#, ipadx=25, ipady=20)
 
         ############# Layout Settings #############
-        self.settings_frame.grid(row=4, column=4, sticky="w", columnspan=1, rowspan=7, padx=(10, 10), pady=(10, 10))
+        self.settings_frame.grid(row=3, column=4, sticky="nswe", columnspan=1, rowspan=4, padx=50, pady=0)
         self.size_label.grid(row=0, column=0, sticky="w")
         self.size_entry.grid(row=0, column=1, sticky="we")
         #self.slope_entry.grid(row=1, column=1, sticky="we")
@@ -198,7 +200,7 @@ class FileBrowserGUI:
         #self.a_c_radio_button.grid(row=4, column=0, sticky="w")
         #self.contrast_entry.grid(row=3, column=1, sticky="we")
         #self.contrast_label.grid(row=3, column=0, sticky="w")
-        self.size_update_button.grid(row=5, column=0, sticky="w", padx=(10, 50), pady=(10, 50))
+        self.size_update_button.grid(row=5, column=0, sticky="w")
 
         ############# Grid #############
         self.master.grid_columnconfigure(0,weight=1)
@@ -218,6 +220,11 @@ class FileBrowserGUI:
         self.gallery_buttons_frame.grid_columnconfigure(1,weight=1)
         self.gallery_buttons_frame.grid_columnconfigure(2,weight=1)
         self.gallery_buttons_frame.grid_columnconfigure(3,weight=1)
+
+        self.navigation_frame.grid_columnconfigure(0,weight=1)
+        self.navigation_frame.grid_columnconfigure(1,weight=1)
+        self.navigation_frame.grid_columnconfigure(2,weight=1)
+
         
         ############# Var Setup #############
         self.bs_var.set('')
@@ -255,12 +262,10 @@ class FileBrowserGUI:
         self.master.bind("1", self.bs_button_click)
         self.master.bind("2", self.bg_button_click)
         self.master.bind("3", self.lv_button_click)
-
         self.master.bind("h", lambda event: self.radio_var.set(1))
         self.master.bind("n", lambda event: self.radio_var.set(2))
         self.master.bind("i", lambda event: self.radio_var.set(3))
         self.master.bind("u", lambda event: self.radio_var.set(4))
-        
         self.master.bind("o", self.browse_files)
         self.master.bind("b", self.browse_button_output_click)
         self.master.bind("<Escape>", self.reset)
