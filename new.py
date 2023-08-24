@@ -269,7 +269,6 @@ class FileBrowserGUI:
         self.master.bind("b", self.browse_button_output_click)
         self.master.bind("<Escape>", self.reset)
     
-
     def populate_tree(self, parent, full_path:str=None):
         # Get subdirectories of parent directory
         try:
@@ -310,7 +309,7 @@ class FileBrowserGUI:
         if directory:
             for item in self.tree.get_children():
                 self.tree.delete(item)
-            root_node = self.tree.insert("", "end", text=directory)
+            root_node = self.tree.insert("", "end", text=directory,value=directory)
             self.populate_tree(root_node)
         else:
             messagebox.showerror("Error", "Invalid path")
@@ -318,7 +317,7 @@ class FileBrowserGUI:
     def tree_double_click(self, event):
         item = self.tree.selection()[0]
         path = ' '.join(self.tree.item(item, "value"))
-                
+        print (path)
         if os.path.isdir(path) or '.nii' in path:
             # Update directory size in treeview
             self.tree.set(item)
