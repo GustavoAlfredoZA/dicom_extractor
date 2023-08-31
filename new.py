@@ -4,7 +4,7 @@ from tkinter.filedialog import askdirectory
 from tkinter import messagebox
 from PIL import Image, ImageTk
 import os, sys
-#import math
+#yyimport math
 import numpy as np
 import pydicom as dicom
 from zoom import AutoScrollbar, CanvasImage
@@ -54,23 +54,28 @@ class FileBrowserGUI:
         self.output_path_var = tk.StringVar()
         self.prev_output_path_var = tk.StringVar()
         
-        bs_selected_file = 'icons\\button_brainstem_selected.png'
-        bg_selected_file = 'icons\\button_basal-ganglia_selected.png'
-        lv_selected_file = 'icons\\button_lateral-ventricles_selected.png'
-        bs_file = 'icons\\button_brainstem.png'
-        bg_file = 'icons\\button_basal-ganglia.png'
-        lv_file = 'icons\\button_lateral-ventricles.png'
+        bs_selected_file = 'icons/button_brainstem_selected.png'
+        bg_selected_file = 'icons/button_basal-ganglia_selected.png'
+        lv_selected_file = 'icons/button_lateral-ventricles_selected.png'
+        bs_file = 'icons/button_brainstem.png'
+        bg_file = 'icons/button_basal-ganglia.png'
+        lv_file = 'icons/button_lateral-ventricles.png'
+        self.log_file = './log.txt'
 
         """ for pyinstaller """
-        """
         bs_selected_file = sep(os.path.join(os.path.dirname(sys.executable),bs_selected_file))
         bg_selected_file = sep(os.path.join(os.path.dirname(sys.executable),bg_selected_file))
         lv_selected_file = sep(os.path.join(os.path.dirname(sys.executable),lv_selected_file))
         bs_file = sep(os.path.join(os.path.dirname(sys.executable),bs_file))
         bg_file = sep(os.path.join(os.path.dirname(sys.executable),bg_file))
         lv_file = sep(os.path.join(os.path.dirname(sys.executable),lv_file))
-        """
+        self.log_file = sep(os.path.join(os.path.dirname(sys.executable),self.log_file))
         
+
+        log = open(self.log_file, 'a+')
+        log.write('Starting program\n')
+        log.close()
+
         ############# Input #############
         self.browse_button = ttk.Button(self.master, text="Browse input", command=self.browse_files)
         self.tree = ttk.Treeview(self.master)
@@ -299,94 +304,120 @@ class FileBrowserGUI:
                         n = self.tree.insert(node, "end", text=ni,value=sep(os.path.join(d_full_path, ni)))
             return ic_var
         except Exception as e:
-            messagebox.showerror("Error", "Error\n"+ e)
+            messagebox.showerror("Error", "Error\n"+ str(e))
+            log = open(self.log_file, 'a+')
+            log.write('Error\n'+ str(e))
+            log.close()
                 
     def browse_files(self, event=None):
-        directory = askdirectory()
-        self.path_var.set(directory)
-        self.path_entry.delete(0, tk.END)
-        self.path_entry.insert(0, directory)
-        if directory:
-            for item in self.tree.get_children():
-                self.tree.delete(item)
-            root_node = self.tree.insert("", "end", text=directory,value=directory)
-            self.populate_tree(root_node)
-        else:
-            messagebox.showerror("Error", "Invalid path")
+        try:
+            directory = askdirectory()
+            self.path_var.set(directory)
+            self.path_entry.delete(0, tk.END)
+            self.path_entry.insert(0, directory)
+            if directory:
+                for item in self.tree.get_children():
+                    self.tree.delete(item)
+                root_node = self.tree.insert("", "end", text=directory,value=directory)
+                self.populate_tree(root_node)
+            else:
+                messagebox.showerror("Error", "Invalid path")
+        except Exception as e:
+            messagebox.showerror("Error", "Error\n"+ str(e))
+            log = open(self.log_file, 'a+')
+            log.write('Error\n'+ str(e))
+            log.close()
 
     def tree_double_click(self, event):
-        item = self.tree.selection()[0]
-        path = ' '.join(self.tree.item(item, "value"))
-        print (path)
-        if os.path.isdir(path) or '.nii' in path:
-            # Update directory size in treeview
-            self.tree.set(item)
+        try:
+            item = self.tree.selection()[0]
+            path = ' '.join(self.tree.item(item, "value"))
+            if os.path.isdir(path) or '.nii' in path:
+                # Update directory size in treeview
+                self.tree.set(item)
 
-            # Clear image frame
-            
-            for widget in self.image_frame.winfo_children():
-                widget.destroy()
-            # Populate image frame with images from selected directory
-            self.aux_path = path
-            self.populate_images(path)
-            self.manage_gallery()
+                # Clear image frame
+                
+                for widget in self.image_frame.winfo_children():
+                    widget.destroy()
+                # Populate image frame with images from selected directory
+                self.aux_path = path
+                self.populate_images(path)
+                self.manage_gallery()
+                self.bs_var.set('')
+                self.bg_var.set('')
+                self.lv_var.set('')
+                self.prev_image = ''
+                self.bs_selection_button.config(image=self.bs_b_i)
+                self.bg_selection_button.config(image=self.bg_b_i)
+                self.lv_selection_button.config(image=self.lv_b_i)
+                self.save_button.config(state=tk.DISABLED)
+                self.reset()
+        except Exception as e:
+            messagebox.showerror("Error", "Error\n"+ str(e))
+            log = open(self.log_file, 'a+')
+            log.write('Error\n'+ str(e))
+            log.close()
+  
+    def browse_button_output_click(self,event=None):
+        try:
+            directory = askdirectory()
+            self.output_path_var.set(directory)
+            self.path_entry_output.delete(0, tk.END)
+            self.path_entry_output.insert(0, directory)
+        except Exception as e:
+            messagebox.showerror("Error", "Error\n"+ str(e))
+            log = open(self.log_file, 'a+')
+            log.write('Error\n'+ str(e))
+            log.close()
+
+    def reset(self,event=None):
+        try:
             self.bs_var.set('')
             self.bg_var.set('')
             self.lv_var.set('')
+
+            self.file_index = 0
+            self.gallery_index = 0
+            
             self.prev_image = ''
+            self.actual_image = ''
+            self.prev_dir = ''
+            #self.output_path_var.set('')
+            #self.prev_output_path_var.set('')
+            
+            #self.max_gallery_index = 0
+
+            self.slope_var.set(1)
+            self.intercept_var.set(1)
+
             self.bs_selection_button.config(image=self.bs_b_i)
             self.bg_selection_button.config(image=self.bg_b_i)
             self.lv_selection_button.config(image=self.lv_b_i)
-            self.save_button.config(state=tk.DISABLED)
-            self.reset()
-  
-    def browse_button_output_click(self,event=None):
-        directory = askdirectory()
-        self.output_path_var.set(directory)
-        self.path_entry_output.delete(0, tk.END)
-        self.path_entry_output.insert(0, directory)
-
-    def reset(self,event=None):
-        self.bs_var.set('')
-        self.bg_var.set('')
-        self.lv_var.set('')
-
-        self.file_index = 0
-        self.gallery_index = 0
-        
-        self.prev_image = ''
-        self.actual_image = ''
-        self.prev_dir = ''
-        #self.output_path_var.set('')
-        #self.prev_output_path_var.set('')
-        
-        #self.max_gallery_index = 0
-
-        self.slope_var.set(1)
-        self.intercept_var.set(1)
-
-        self.bs_selection_button.config(image=self.bs_b_i)
-        self.bg_selection_button.config(image=self.bg_b_i)
-        self.lv_selection_button.config(image=self.lv_b_i)
 
 
-        # Set up treeview columns
-        #self.path_entry.delete(0, tk.END)
-        #self.path_var.set(sep(os.getcwd()))
+            # Set up treeview columns
+            #self.path_entry.delete(0, tk.END)
+            #self.path_var.set(sep(os.getcwd()))
 
-        #self.radio_var.set(0)
-        
-        # Populate treeview with root directory
-        #root_node = self.tree.insert("", "end", text=os.getcwd())
-        #self.populate_tree(root_node)
-        #self.delimiter = '/'
-        self.save_button.config(state='disabled')
-        
-        self.contrast_var.set(0)
-        self.slope_var.set(1)
-        self.intercept_var.set(1)
-        self.manage_images()
-        self.manage_gallery()
+            #self.radio_var.set(0)
+            
+            # Populate treeview with root directory
+            #root_node = self.tree.insert("", "end", text=os.getcwd())
+            #self.populate_tree(root_node)
+            #self.delimiter = '/'
+            self.save_button.config(state='disabled')
+            
+            self.contrast_var.set(0)
+            self.slope_var.set(1)
+            self.intercept_var.set(1)
+            self.manage_images()
+            self.manage_gallery()
+        except Exception as e:
+            messagebox.showerror("Error", "Error\n"+ str(e))
+            log = open(self.log_file, 'a+')
+            log.write('Error\n'+ str(e))
+            log.close()
 
     def save_button_click(self,event=None):
         """
@@ -442,378 +473,529 @@ class FileBrowserGUI:
                     image.convert('L').save(output_path+str(i)+'.jpg')
                 self.prev_output_path_var.set('Previous set saved in '+output_path)
                 self.reset()
-        except :
+        except Exception as e:
             messagebox.showerror("Error", "Error")
+            self.log.write('Error\n'+ str(e))
     
     def bs_button_click(self, event):
-        if self.bs_var.get() != '' and self.file_index != int(self.bs_var.get()):
-            r = messagebox.askyesno("Update", "Do you want to update the image of Brain Stem? ")
-            if r:
-                self.bs_var.set('')
-                self.bs_selection_button.config(image=self.bs_b_i)
-            else:
-                return None
-        if self.bg_var.get() != '' and self.file_index == int(self.bg_var.get()):
-            r = messagebox.askyesno("Update", "Do you want to update the image of Basal Ganglia? ")
-            if r:
-                self.bg_button_click(event)
-            else:
-                return None
-        if self.lv_var.get() != '' and self.file_index == int(self.lv_var.get()):
-            r = messagebox.askyesno("Update", "Do you want to update the image of Lateral Ventricles? ")
-            if r:
-                self.lv_button_click(event)
-            else:
-                return None
-        
-        
-        if self.bs_var.get() == '':
-            self.bs_var.set(self.file_index)
-            self.bs_selection_button.config(image=self.bs_selected_b_i)
-            self.manage_images()
-            self.manage_gallery()
-            if self.bg_var.get() != '' and self.lv_var.get() != '':
-                self.save_button.config(state='normal')    
-        else:
-            if self.file_index == int(self.bs_var.get()):
-                self.bs_var.set('')
+        try:
+            if self.bs_var.get() != '' and self.file_index != int(self.bs_var.get()):
+                r = messagebox.askyesno("Update", "Do you want to update the image of Brain Stem? ")
+                if r:
+                    self.bs_var.set('')
+                    self.bs_selection_button.config(image=self.bs_b_i)
+                else:
+                    return None
+            if self.bg_var.get() != '' and self.file_index == int(self.bg_var.get()):
+                r = messagebox.askyesno("Update", "Do you want to update the image of Basal Ganglia? ")
+                if r:
+                    self.bg_button_click(event)
+                else:
+                    return None
+            if self.lv_var.get() != '' and self.file_index == int(self.lv_var.get()):
+                r = messagebox.askyesno("Update", "Do you want to update the image of Lateral Ventricles? ")
+                if r:
+                    self.lv_button_click(event)
+                else:
+                    return None
+            
+            
+            if self.bs_var.get() == '':
+                self.bs_var.set(self.file_index)
+                self.bs_selection_button.config(image=self.bs_selected_b_i)
                 self.manage_images()
-            self.bs_var.set('')
-            self.manage_gallery()
-            self.bs_selection_button.config(image=self.bs_b_i)
-            self.save_button.config(state='disabled')
+                self.manage_gallery()
+                if self.bg_var.get() != '' and self.lv_var.get() != '':
+                    self.save_button.config(state='normal')    
+            else:
+                if self.file_index == int(self.bs_var.get()):
+                    self.bs_var.set('')
+                    self.manage_images()
+                self.bs_var.set('')
+                self.manage_gallery()
+                self.bs_selection_button.config(image=self.bs_b_i)
+                self.save_button.config(state='disabled')
+        except Exception as e:
+            messagebox.showerror("Error", "Error\n"+ str(e))
+            log = open(self.log_file, 'a+')
+            log.write('Error\n'+ str(e))
+            log.close()
               
     def bg_button_click(self, event):
-        if self.bg_var.get() != '' and self.file_index != int(self.bg_var.get()):
-            r = messagebox.askyesno("Update", "Do you want to update the image of Basal Ganglia? ")
-            if r:
-                self.bg_var.set('')
-                self.bg_selection_button.config(image=self.bg_b_i)
-            else:
-                return None
-        if self.bs_var.get() != '' and self.file_index == int(self.bs_var.get()):
-            r = messagebox.askyesno("Update", "Do you want to update the image of Brainstem? ")
-            if r:
-                self.bs_button_click(event)
-            else:
-                return None
-        if self.lv_var.get() != '' and self.file_index == int(self.lv_var.get()):
-            r = messagebox.askyesno("Update", "Do you want to update the image of Lateral Ventricles? ")
-            if r:
-                self.lv_button_click(event)
-            else:
-                return None
-        
-        if self.bg_var.get() == '':
-            self.bg_var.set(self.file_index)
-            self.bg_selection_button.config(image=self.bg_selected_b_i)
-            self.manage_images()
-            self.manage_gallery()
-            if self.bs_var.get() != '' and self.lv_var.get() != '':
-                self.save_button.config(state='normal')
-        else:
-            if self.file_index == int(self.bg_var.get()):
-                self.bg_var.set('')
+        try:
+            if self.bg_var.get() != '' and self.file_index != int(self.bg_var.get()):
+                r = messagebox.askyesno("Update", "Do you want to update the image of Basal Ganglia? ")
+                if r:
+                    self.bg_var.set('')
+                    self.bg_selection_button.config(image=self.bg_b_i)
+                else:
+                    return None
+            if self.bs_var.get() != '' and self.file_index == int(self.bs_var.get()):
+                r = messagebox.askyesno("Update", "Do you want to update the image of Brainstem? ")
+                if r:
+                    self.bs_button_click(event)
+                else:
+                    return None
+            if self.lv_var.get() != '' and self.file_index == int(self.lv_var.get()):
+                r = messagebox.askyesno("Update", "Do you want to update the image of Lateral Ventricles? ")
+                if r:
+                    self.lv_button_click(event)
+                else:
+                    return None
+            
+            if self.bg_var.get() == '':
+                self.bg_var.set(self.file_index)
+                self.bg_selection_button.config(image=self.bg_selected_b_i)
                 self.manage_images()
-            self.bg_var.set('')
-            self.manage_gallery()
-            self.bg_selection_button.config(image=self.bg_b_i)
-            self.save_button.config(state='disabled')          
+                self.manage_gallery()
+                if self.bs_var.get() != '' and self.lv_var.get() != '':
+                    self.save_button.config(state='normal')
+            else:
+                if self.file_index == int(self.bg_var.get()):
+                    self.bg_var.set('')
+                    self.manage_images()
+                self.bg_var.set('')
+                self.manage_gallery()
+                self.bg_selection_button.config(image=self.bg_b_i)
+                self.save_button.config(state='disabled')          
+        except Exception as e:
+            messagebox.showerror("Error", "Error\n"+ str(e))
+            log = open(self.log_file, 'a+')
+            log.write('Error\n'+ str(e))
+            log.close()
 
     def lv_button_click(self, event):
-        if self.lv_var.get() != '' and self.file_index != int(self.lv_var.get()):
-            r = messagebox.askyesno("Update", "Do you want to update the image of Lateral Ventricles? ")
-            if r:
-                self.lv_var.set('')
-                self.lv_selection_button.config(image=self.lv_b_i)
-            else:
-                return None
-        if self.bs_var.get() != '' and self.file_index == int(self.bs_var.get()):
-            r = messagebox.askyesno("Update", "Do you want to update the image of Brainstem? ")
-            if r:
-                self.bs_button_click(event)
-            else:
-                return None
-        if self.bg_var.get() != '' and self.file_index == int(self.bg_var.get()):
-            r = messagebox.askyesno("Update", "Do you want to update the image of Basal Ganglia? ")
-            if r:
-                self.bg_button_click(event)
-            else:
-                return None
+        try:
+            if self.lv_var.get() != '' and self.file_index != int(self.lv_var.get()):
+                r = messagebox.askyesno("Update", "Do you want to update the image of Lateral Ventricles? ")
+                if r:
+                    self.lv_var.set('')
+                    self.lv_selection_button.config(image=self.lv_b_i)
+                else:
+                    return None
+            if self.bs_var.get() != '' and self.file_index == int(self.bs_var.get()):
+                r = messagebox.askyesno("Update", "Do you want to update the image of Brainstem? ")
+                if r:
+                    self.bs_button_click(event)
+                else:
+                    return None
+            if self.bg_var.get() != '' and self.file_index == int(self.bg_var.get()):
+                r = messagebox.askyesno("Update", "Do you want to update the image of Basal Ganglia? ")
+                if r:
+                    self.bg_button_click(event)
+                else:
+                    return None
 
-        if self.lv_var.get() == '':
-            self.lv_var.set(self.file_index)
-            self.lv_selection_button.config(image=self.lv_selected_b_i)
-            self.manage_images()
-            self.manage_gallery()
-            #self.image_frame.config(bg='green')
-            if self.bs_var.get() != '' and self.bg_var.get() != '':
-                self.save_button.config(state='normal')
-        else:
-            if self.file_index == int(self.lv_var.get()):
-                self.lv_var.set('')
+            if self.lv_var.get() == '':
+                self.lv_var.set(self.file_index)
+                self.lv_selection_button.config(image=self.lv_selected_b_i)
                 self.manage_images()
-            self.lv_var.set('')
-            self.manage_gallery()
-            self.lv_selection_button.config(image=self.lv_b_i)
-            self.save_button.config(state='disabled')
+                self.manage_gallery()
+                #self.image_frame.config(bg='green')
+                if self.bs_var.get() != '' and self.bg_var.get() != '':
+                    self.save_button.config(state='normal')
+            else:
+                if self.file_index == int(self.lv_var.get()):
+                    self.lv_var.set('')
+                    self.manage_images()
+                self.lv_var.set('')
+                self.manage_gallery()
+                self.lv_selection_button.config(image=self.lv_b_i)
+                self.save_button.config(state='disabled')
+        except Exception as e:
+            messagebox.showerror("Error", "Error\n"+ str(e))
+            log = open(self.log_file, 'a+')
+            log.write('Error\n'+ str(e))
+            log.close()
 
     def next_button_click(self,event=None):
-        self.file_index += 1
-        if self.file_index >= len(self.list_files):
-            self.file_index = 0
-        self.manage_images()
+        try:
+            self.file_index += 1
+            if self.file_index >= len(self.list_files):
+                self.file_index = 0
+            self.manage_images()
+        except Exception as e:
+            messagebox.showerror("Error", "Error\n"+ str(e))
+            log = open(self.log_file, 'a+')
+            log.write('Error\n'+ str(e))
+            log.close()
 
     def prev_button_click(self,event=None):
-        self.file_index -= 1
-        if self.file_index <= -1:
-            self.file_index = len(self.list_files) -1
-        self.manage_images()   
+        try:
+            self.file_index -= 1
+            if self.file_index <= -1:
+                self.file_index = len(self.list_files) -1
+            self.manage_images()
+        except Exception as e:
+            messagebox.showerror("Error", "Error\n"+ str(e))
+            log = open(self.log_file, 'a+')
+            log.write('Error\n'+ str(e))
+            log.close()
 
     def next_gallery_button_click(self,event=None):
-        if self.gallery_index == 0:
-            self.prev_gallery_button.config(state='normal')
-        self.gallery_index += 1
-        if self.gallery_index >= self.max_gallery_index:
-            self.gallery_index = self.max_gallery_index
-            self.next_gallery_button.config(state='disabled')       
-        self.manage_gallery()
+        try:
+            if self.gallery_index == 0:
+                self.prev_gallery_button.config(state='normal')
+            self.gallery_index += 1
+            if self.gallery_index >= self.max_gallery_index:
+                self.gallery_index = self.max_gallery_index
+                self.next_gallery_button.config(state='disabled')       
+            self.manage_gallery()
+        except Exception as e:
+            messagebox.showerror("Error", "Error\n"+ str(e))
+            log = open(self.log_file, 'a+')
+            log.write('Error\n'+ str(e))
+            log.close()
     
     def prev_gallery_button_click(self,event=None):
-        if self.max_gallery_index != 0:
-            self.next_gallery_button.config(state='normal')
-        self.gallery_index -= 1
-        if self.gallery_index <= 1:
-            self.gallery_index = 0
-            self.prev_gallery_button.config(state='disabled')
-        self.manage_gallery()
+        try:
+            if self.max_gallery_index != 0:
+                self.next_gallery_button.config(state='normal')
+            self.gallery_index -= 1
+            if self.gallery_index <= 1:
+                self.gallery_index = 0
+                self.prev_gallery_button.config(state='disabled')
+            self.manage_gallery()
+        except Exception as e:
+            messagebox.showerror("Error", "Error\n"+ str(e))
+            log = open(self.log_file, 'a+')
+            log.write('Error\n'+ str(e))
+            log.close()
 
     def populate_images(self, path):
         # Get image files in directory
         # (0020, 0013) Instance Number                     IS: '29'
-        if '.nii' in self.aux_path:
-            self.nii_image = nib.load(self.aux_path)
-            nii_image = self.nii_image.get_fdata()
-            self.max_gallery_index = nii_image.shape[2] // 9
+        try:
+            if '.nii' in self.aux_path:
+                self.nii_image = nib.load(self.aux_path)
+                nii_image = self.nii_image.get_fdata()
+                self.max_gallery_index = nii_image.shape[2] // 9
+                if self.max_gallery_index != 0:
+                    self.next_gallery_button.config(state='normal')
+                self.file_index = 0
+                self.list_files = [i for i in range(nii_image.shape[2])]
+                return
+
+            image_files = [f for f in os.listdir(path) if os.path.isfile(os.path.join(path, f)) and f.lower().endswith((".jpg", ".jpeg", ".png", ".gif", ".dcm" ))]
+            
+            if len(image_files) == 0:
+                messagebox.showerror("Error", "No images in directory")
+                return
+            
+            
+            d_files = []
+            for f in image_files:
+                full_path = os.path.join(path, f)
+                if '\\' in full_path:
+                    full_path = sep(full_path)
+                try:
+                    ds = dicom.dcmread(full_path)
+                    n = ds.InstanceNumber
+                except:
+                    n = int(''.join(filter(str.isdigit, '0'+f)))
+                d_files.append([f,n])
+            
+            
+            
+            image_files = sorted(d_files, key=lambda  t:t[1])
+            image_files = [s[0] for s in image_files]
+
+            # Populate image frame with images
+            self.list_files = image_files
+
+            self.max_gallery_index = len(image_files) // 9
             if self.max_gallery_index != 0:
                 self.next_gallery_button.config(state='normal')
+            
             self.file_index = 0
-            self.list_files = [i for i in range(nii_image.shape[2])]
-            return
-
-        image_files = [f for f in os.listdir(path) if os.path.isfile(os.path.join(path, f)) and f.lower().endswith((".jpg", ".jpeg", ".png", ".gif", ".dcm" ))]
-
-        if len(image_files) == 0:
-            messagebox.showerror("Error", "No images in directory")
-            return
-        
-        
-        d_files = []
-        for f in image_files:
-            full_path = os.path.join(path, f)
-            if '\\' in full_path:
-                full_path = sep(full_path)
-            try:
-                ds = dicom.dcmread(full_path)
-                n = ds.InstanceNumber
-            except:
-                n = int(''.join(filter(str.isdigit, '0'+f)))
-            d_files.append([f,n])
-        
-        
-        
-        image_files = sorted(d_files, key=lambda  t:t[1])
-        image_files = [s[0] for s in image_files]
-
-        # Populate image frame with images
-        self.list_files = image_files
-        self.max_gallery_index = len(image_files) // 9
-        if self.max_gallery_index != 0:
-            self.next_gallery_button.config(state='normal')
-        
-        self.file_index = 0
-        
-        full_path = os.path.join(path, image_files[0])
+            
+            full_path = os.path.join(path, image_files[0])
+        except Exception as e:
+            messagebox.showerror("Error", "Error\n"+ str(e))
+            log = open(self.log_file, 'a+')
+            log.write('Error\n'+ str(e))
+            log.close()
 
     def update_size(self):
-        self.size.set(self.size_entry.get())
-        self.image_frame.config(width=self.size.get(), height=self.size.get())
-        self.manage_images()
+        try:
+            self.size.set(self.size_entry.get())
+            self.image_frame.config(width=self.size.get(), height=self.size.get())
+            self.manage_images()
+        except Exception as e:
+            messagebox.showerror("Error", "Error\n"+ str(e))
+            log = open(self.log_file, 'a+')
+            log.write('Error\n'+ str(e))
+            log.close()
 
     def get_first_of_dicom_field_as_int(self, x):
         #get x[0] as in int is x is a 'pydicom.multival.MultiValue', otherwise get int(x)
-        if type(x) == dicom.multival.MultiValue: 
-            return int(x[0])
-        else: 
-            return int(x)
+        try:
+            if type(x) == dicom.multival.MultiValue: 
+                return int(x[0])
+            else: 
+                return int(x)
+        except Exception as e:
+            messagebox.showerror("Error", "Error\n"+ str(e))
+            log = open(self.log_file, 'a+')
+            log.write('Error\n'+ str(e))
+            log.close()
 
     def window_image(self, img, window_center,window_width, intercept, slope, rescale=True):
-        img = (img*slope +intercept) #for translation adjustments given in the dicom file. 
-        img_min = window_center - window_width//2 #minimum HU level
-        img_max = window_center + window_width//2 #maximum HU level
-        img[img<img_min] = img_min #set img_min for all HU levels less than minimum HU level
-        img[img>img_max] = img_max #set img_max for all HU levels higher than maximum HU level
-        if rescale: 
-            img = (img - img_min) / (img_max - img_min)*255.0 
-        return img
+        try:
+            img = (img*slope +intercept) #for translation adjustments given in the dicom file. 
+            img_min = window_center - window_width//2 #minimum HU level
+            img_max = window_center + window_width//2 #maximum HU level
+            img[img<img_min] = img_min #set img_min for all HU levels less than minimum HU level
+            img[img>img_max] = img_max #set img_max for all HU levels higher than maximum HU level
+            if rescale: 
+                img = (img - img_min) / (img_max - img_min)*255.0 
+            return img
+        except Exception as e:
+            messagebox.showerror("Error", "Error\n"+ str(e))
+            log = open(self.log_file, 'a+')
+            log.write('Error\n'+ str(e))
+            log.close()
 
     def get_windowing(self,data):
         try:
-            dicom_fields = [data[('0028','1050')].value, #window center
-                            data[('0028','1051')].value, #window width
-                            data[('0028','1052')].value, #intercept
-                            data[('0028','1053')].value] #slope
-        except:
-            dicom_fields = [40.0, #window center
-                            100.0, #window width
-                            -1024.0, #intercept
-                            1] #slope
-            return dicom_fields
-        return [self.get_first_of_dicom_field_as_int(x) for x in dicom_fields]
+            log = open(self.log_file, 'a+')
+            log.write(f'get_windowing \n')
+            log.close()
+            try:
+                dicom_fields = [data[('0028','1050')].value, #window center
+                                data[('0028','1051')].value, #window width
+                                data[('0028','1052')].value, #intercept
+                                data[('0028','1053')].value] #slope
+            except:
+                dicom_fields = [40.0, #window center
+                                100.0, #window width
+                                -1024.0, #intercept
+                                1] #slope
+                log = open(self.log_file, 'a+')
+                log.write(f'finish get windowing {data}\n')
+                log.close()
+                return dicom_fields
+            log = open(self.log_file, 'a+')
+            log.write(f'finish get windowing {data}\n')
+            log.close()
+            return [self.get_first_of_dicom_field_as_int(x) for x in dicom_fields]
+        except Exception as e:
+            messagebox.showerror("Error", "Error\n"+ str(e))
+            log = open(self.log_file, 'a+')
+            log.write('Error\n'+ str(e))
+            log.close()
     
     def dcm_image(self, full_path):
+        
         if '\\' in full_path:
             full_path = sep(full_path)
+        print('dcm_image')            
         ds = dicom.dcmread(full_path)
+        log = open(self.log_file, 'a+')
+        log.write('dcm_image\n'+str(full_path)+ '\n')
+        log.close()
         #print(ds)
         
         image = ds.pixel_array
+        log = open(self.log_file, 'a+')
+        log.write(f'dcm_image pixel array\n')
+        log.close()
         window_center , window_width, intercept, slope = self.get_windowing(ds)
+        log = open(self.log_file, 'a+')
+        log.write(f'dcm_image\n {str(window_center)} {str(window_width)} {str(intercept)} {str(slope)}')
+        log.close()
         output = self.window_image(image, window_center, window_width, intercept, slope, rescale = False)
-
+        log = open(self.log_file, 'a+')
+        log.write(f'dcm_image\n{output}\n')
+        log.close()
+        #print(ds)
+        
         contrast = self.contrast_var.get()
         if contrast == 1:
             p2, p98 = np.percentile(output, (10, 90))
-            output = exposure.rescale_intensity(output, in_range=(p2, p98))    
+            output = exposure.rescale_intensity(output, in_range=(p2, p98))
+            log = open(self.log_file, 'a+')
+            log.write(f'dcm contrast 1 {output}\n')
+            log.close()
         elif contrast == 2:
             output = pre.MinMaxScaler().fit_transform(output)
             output = exposure.equalize_hist(output)   
+            log = open(self.log_file, 'a+')
+            log.write(f'dcm contrast 2 {output}\n')
+            log.close()
         output = pre.MinMaxScaler((0,255)).fit_transform(output)
+
+        #ds = dicom.dcmread(full_path)
+        log = open(self.log_file, 'a+')
+        log.write(f'Final dcm {output}\n')
+        log.close()
         return output
+        
 
     def manage_images(self):
         # Get image files in directory
         # Populate image frame with images
         # clear image frame
 
-        self.prev_image = self.actual_image
-        
-        bs, bg, lv = -1, -1, -1
-        if self.bs_var.get() != '': 
-            bs = int(self.bs_var.get())
-        if self.bg_var.get() != '': 
-            bg = int(self.bg_var.get())    
-        if self.lv_var.get() != '': 
-            lv = int(self.lv_var.get())
-        
-        for widget in self.image_frame.winfo_children():
-            widget.destroy()        
-        
-        if not '.nii' in self.aux_path:
-            full_path = sep(os.path.join(self.aux_path, self.list_files[self.file_index%len(self.list_files)]))
-            self.actual_image = full_path
-        if '.nii' in self.aux_path:
-            image = self.nii_image.get_fdata()[:,:,self.file_index]
-            image = pre.MinMaxScaler((0,255)).fit_transform(image)
-            image = np.rot90(image, 1)
-            image = Image.fromarray(image)
-        elif '.dcm' in full_path:
-            output_image = self.dcm_image(full_path)
-            image = Image.fromarray(output_image)           
-        else:
-            image = Image.open(full_path)
-        
-        image.thumbnail((int(self.size.get()), int(self.size.get())), Image.Resampling.LANCZOS)
-        
-        canva_height = image.size[0]+10
-        canva_width = image.size[1]+10
-        if self.file_index == bs:
-            new_im = Image.new("RGB", (canva_height,canva_width),'purple')
-            box = tuple((n - o) // 2 for n, o in zip((canva_height+10,canva_width+10), (canva_height,canva_width)))
-            new_im.paste(image, box)
-            image = new_im
-        elif self.file_index == bg:
-            new_im = Image.new("RGB", (canva_height,canva_width),'orange')
-            box = tuple((n - o) // 2 for n, o in zip((canva_height+10,canva_width+10), (canva_height,canva_width)))
-            new_im.paste(image, box)
-            image = new_im
-        elif self.file_index == lv:
-            new_im = Image.new("RGB", (canva_height,canva_width),'green')
-            box = tuple((n - o) // 2 for n, o in zip((canva_height+10,canva_width+10), (canva_height,canva_width)))
-            new_im.paste(image, box)
-            image = new_im
-
-        canvas = CanvasImage(self.image_frame,image, size= int(self.size.get()), )  # create widget
-        canvas.grid(row=0, column=0)  # show widget
-        
-    def gallery_scroll(self, event):
-        print(event)
-    
-    def gallery_click(self, event, index):
-        self.file_index = index
-        self.manage_images()
-
-    def manage_gallery(self):
-        for widget in self.gallery_canvas.winfo_children():
-            widget.destroy()
-        
-        start_index = self.gallery_index*9
-        sublist = self.list_files[start_index:min(start_index+9, len(self.list_files))]
-        row = 0
-
-        bs, bg, lv = -1, -1, -1
-        if self.bs_var.get() != '':
-            bs = int(self.bs_var.get())
-        if self.bg_var.get() != '':
-            bg = int(self.bg_var.get())    
-        if self.lv_var.get() != '':
-            lv = int(self.lv_var.get())
-        
-        
-        for i, path in enumerate(sublist):
-            full_path = os.path.join(self.aux_path, str(path))
+        try:
+            self.prev_image = self.actual_image
+            log = open(self.log_file, 'a+')
+            log.write('Manage_images Actual_image\n'+str(self.actual_image)+','+ str(self.file_index)+ '\n')
+            log.close()
+            
+            bs, bg, lv = -1, -1, -1
+            if self.bs_var.get() != '': 
+                bs = int(self.bs_var.get())
+            if self.bg_var.get() != '': 
+                bg = int(self.bg_var.get())    
+            if self.lv_var.get() != '': 
+                lv = int(self.lv_var.get())
+            
+            for widget in self.image_frame.winfo_children():
+                widget.destroy()        
+            log = open(self.log_file, 'a+')
+            log.write('Manage_images before image\n')
+            log.close()
+            if not '.nii' in self.aux_path:
+                full_path = sep(os.path.join(self.aux_path, self.list_files[self.file_index%len(self.list_files)]))
+                self.actual_image = full_path
             if '.nii' in self.aux_path:
-                image = self.nii_image.get_fdata()[:,:,i+start_index]
+                image = self.nii_image.get_fdata()[:,:,self.file_index]
                 image = pre.MinMaxScaler((0,255)).fit_transform(image)
                 image = np.rot90(image, 1)
                 image = Image.fromarray(image)
             elif '.dcm' in full_path:
                 output_image = self.dcm_image(full_path)
-                image = Image.fromarray(output_image)   
+                image = Image.fromarray(output_image)           
             else:
                 image = Image.open(full_path)
-            image.thumbnail((100, 100))
+            image = image.convert('HSV')
+            log = open(self.log_file, 'a+')
+            log.write('manage\n'+str(full_path)+ '\n')
+            log.close()
 
+            image.thumbnail((int(self.size.get()), int(self.size.get())), Image.Resampling.LANCZOS)
             
             canva_height = image.size[0]+10
             canva_width = image.size[1]+10
-            if i+start_index == bs:
+            if self.file_index == bs:
                 new_im = Image.new("RGB", (canva_height,canva_width),'purple')
                 box = tuple((n - o) // 2 for n, o in zip((canva_height+10,canva_width+10), (canva_height,canva_width)))
                 new_im.paste(image, box)
                 image = new_im
-            elif i+start_index == bg:
+            elif self.file_index == bg:
                 new_im = Image.new("RGB", (canva_height,canva_width),'orange')
                 box = tuple((n - o) // 2 for n, o in zip((canva_height+10,canva_width+10), (canva_height,canva_width)))
                 new_im.paste(image, box)
                 image = new_im
-            elif i+start_index == lv:
+            elif self.file_index == lv:
                 new_im = Image.new("RGB", (canva_height,canva_width),'green')
                 box = tuple((n - o) // 2 for n, o in zip((canva_height+10,canva_width+10), (canva_height,canva_width)))
                 new_im.paste(image, box)
                 image = new_im
             
-            photo = ImageTk.PhotoImage(image)
-            label = ttk.Label(self.gallery_canvas, image=photo)
-            label.bind("<Button-1>", lambda event, index=start_index+i: self.gallery_click(event, index))
-            label.image = photo
-            label.grid(row=row, column=i%3, padx=5, pady=5)
+            canvas = CanvasImage(self.image_frame,image, size= int(self.size.get()), )  # create widget
+            canvas.grid(row=0, column=0)  # show widget
+        except Exception as e:
+            messagebox.showerror("Error", "Error\n"+ str(e))
+            log = open(self.log_file, 'a+')
+            log.write('Error\n'+ str(e))
+            log.close()
+             
+    def gallery_scroll(self, event):
+        try:
+            print(event)
+        except Exception as e:
+            messagebox.showerror("Error", "Error\n"+ str(e))
+            log = open(self.log_file, 'a+')
+            log.write('Error\n'+ str(e))
+            log.close()
+    
+    def gallery_click(self, event, index):
+        try:
+            self.file_index = index
+            self.manage_images()
+        except Exception as e:
+            messagebox.showerror("Error", "Error\n"+ str(e))
+            log = open(self.log_file, 'a+')
+            log.write('Error\n'+ str(e))
+            log.close()
+
+    def manage_gallery(self):
+        try:
+            log = open(self.log_file, 'a+')
+            log.write('Actual_image\n'+'Manage_gallery'+str(self.list_files)+','+ str(self.gallery_index)+ '\n')
+            log.close()
+            for widget in self.gallery_canvas.winfo_children():
+                widget.destroy()
             
-        
-            if i%3 == 2:
-                row += 1
-            #print(i,self.gallery_canvas.winfo_children())
-            #print(self.gallery_canvas.winfo_children()[i])
+            start_index = self.gallery_index*9
+            sublist = self.list_files[start_index:min(start_index+9, len(self.list_files))]
+            row = 0
+
+            bs, bg, lv = -1, -1, -1
+            if self.bs_var.get() != '':
+                bs = int(self.bs_var.get())
+            if self.bg_var.get() != '':
+                bg = int(self.bg_var.get())    
+            if self.lv_var.get() != '':
+                lv = int(self.lv_var.get())
+            
+            log = open(self.log_file, 'a+')
+            log.write(f"Manage_gallery before for {str(','.join(sublist))}\n")
+            log.close()
+            for i, path in enumerate(sublist):
+                full_path = sep(os.path.join(self.aux_path, str(path)))
+                if '.nii' in self.aux_path:
+                    image = self.nii_image.get_fdata()[:,:,i+start_index]
+                    image = pre.MinMaxScaler((0,255)).fit_transform(image)
+                    image = np.rot90(image, 1)
+                    image = Image.fromarray(image)
+                elif '.dcm' in full_path:
+                    output_image = self.dcm_image(full_path)
+                    image = Image.fromarray(output_image)   
+                else:
+                    image = Image.open(full_path)
+                image.thumbnail((100, 100))
+
+                log = open(self.log_file, 'a+')
+                log.write('manage_gallery full_path\n'+str(full_path)+ '\n')
+                log.close()
+                
+                canva_height = image.size[0]+10
+                canva_width = image.size[1]+10
+                if i+start_index == bs:
+                    new_im = Image.new("RGB", (canva_height,canva_width),'purple')
+                    box = tuple((n - o) // 2 for n, o in zip((canva_height+10,canva_width+10), (canva_height,canva_width)))
+                    new_im.paste(image, box)
+                    image = new_im
+                elif i+start_index == bg:
+                    new_im = Image.new("RGB", (canva_height,canva_width),'orange')
+                    box = tuple((n - o) // 2 for n, o in zip((canva_height+10,canva_width+10), (canva_height,canva_width)))
+                    new_im.paste(image, box)
+                    image = new_im
+                elif i+start_index == lv:
+                    new_im = Image.new("RGB", (canva_height,canva_width),'green')
+                    box = tuple((n - o) // 2 for n, o in zip((canva_height+10,canva_width+10), (canva_height,canva_width)))
+                    new_im.paste(image, box)
+                    image = new_im
+                
+                photo = ImageTk.PhotoImage(image)
+                label = ttk.Label(self.gallery_canvas, image=photo)
+                label.bind("<Button-1>", lambda event, index=start_index+i: self.gallery_click(event, index))
+                label.image = photo
+                label.grid(row=row, column=i%3, padx=5, pady=5)
+                
+            
+                if i%3 == 2:
+                    row += 1
+                #print(i,self.gallery_canvas.winfo_children())
+                #print(self.gallery_canvas.winfo_children()[i])
+        except Exception as e:
+            messagebox.showerror("Error", "Error\n"+ str(e))
+            log = open(self.log_file, 'a+')
+            log.write('Error\n'+ str(e))
+            log.close()
             
               
 if __name__ == "__main__":
