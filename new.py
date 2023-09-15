@@ -70,7 +70,6 @@ class FileBrowserGUI:
         bg_file = sep(os.path.join(os.path.dirname(sys.executable),bg_file))
         lv_file = sep(os.path.join(os.path.dirname(sys.executable),lv_file))
         self.log_file = sep(os.path.join(os.path.dirname(sys.executable),self.log_file))
-        
 
         log = open(self.log_file, 'a+')
         log.write('Starting program\n')
@@ -427,6 +426,7 @@ class FileBrowserGUI:
         Unknown self.radio_var = 4, folder = 'U'
         """
         try:
+            self.log_file.write('Saving\n')
             if self.save_button['state'] != 'normal':
                 return
             if (self.radio_var.get() == 0):
@@ -475,7 +475,8 @@ class FileBrowserGUI:
                 self.reset()
         except Exception as e:
             messagebox.showerror("Error", "Error")
-            self.log.write('Error\n'+ str(e))
+            self.log_file.write('Error\n'+ str(e))
+            self.log_file.close()
     
     def bs_button_click(self, event):
         try:
@@ -831,7 +832,6 @@ class FileBrowserGUI:
         log.close()
         return output
         
-
     def manage_images(self):
         # Get image files in directory
         # Populate image frame with images
