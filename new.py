@@ -71,9 +71,9 @@ class FileBrowserGUI:
         lv_file = sep(os.path.join(os.path.dirname(sys.executable),lv_file))
         self.log_file = sep(os.path.join(os.path.dirname(sys.executable),self.log_file))
 
-        log = open(self.log_file, 'a+')
-        log.write('Starting program\n')
-        log.close()
+        self.log_file = open(self.log_file, 'a+')
+        self.log_file.write('Starting program\n')
+        #log.close()
 
         ############# Input #############
         self.browse_button = ttk.Button(self.master, text="Browse input", command=self.browse_files)
@@ -115,7 +115,7 @@ class FileBrowserGUI:
         self.navigation_frame = ttk.Frame(self.master, height=100)
         next_button = ttk.Button(self.navigation_frame, text="Next", command = self.next_button_click)
         prev_button = ttk.Button(self.navigation_frame, text="Previous", command = self.prev_button_click)
-        self.save_button = ttk.Button(self.navigation_frame, text="Save", command = self.save_button_click,state='disabled')
+        self.save_button = ttk.Button(self.navigation_frame, text="Save", command = self.save_button_click, state='disabled')
 
         self.gallery_buttons_frame = ttk.Frame(self.master, border=5,relief='solid',height=100)  
         self.prev_gallery_button = ttk.Button(self.gallery_buttons_frame, text="^", command = self.prev_gallery_button_click, state='disabled')
@@ -258,6 +258,7 @@ class FileBrowserGUI:
         
         ############# Bindings #############
         self.master.bind("s", self.save_button_click)
+        #self.master.bind("t", self.test)
         self.master.bind("<Right>", self.next_button_click)
         self.master.bind("<Left>", self.prev_button_click)
         self.master.bind("<Up>", self.prev_gallery_button_click)
@@ -273,6 +274,68 @@ class FileBrowserGUI:
         self.master.bind("b", self.browse_button_output_click)
         self.master.bind("<Escape>", self.reset)
     
+    def test(self,event=None):
+        messagebox.showinfo("Test", "Test")
+    
+    def save_button_click(self, event=None):
+        self.log_file.write(f'Saving function\n')
+        try:
+            if self.save_button['state'] != 'normal':
+                self.log_file.write(f'disabled button {self.save_button["state"]}\n')
+                return
+            if (self.radio_var.get() == 0):
+                messagebox.showerror("Error", "First select if the set of images are Ischemia, normal, hemorrhage or unknown.")
+                return
+            if (self.output_path_var.get() == '') or not(os.path.isdir(self.output_path_var.get())):
+                messagebox.showerror("Error", "Select a valid output folder")
+                return
+            else:
+                self.log_file.write(f'Saving process\n')
+                folder = ['H','N','I','U'][self.radio_var.get()-1]
+                full_folder =  self.output_path_var.get()+'/'+folder
+                folders = os.listdir(self.output_path_var.get())
+                if not(folder in folders) or not(os.path.isdir(full_folder)):
+                    os.makedirs(full_folder)
+                list_full_folder = os.listdir(full_folder)
+                list_full_folder =  [int('0'.join(filter(str.isdigit, s))) for s in list_full_folder]
+                if len(list_full_folder) == 0:
+                    output_path = full_folder+'/0/'
+                else:
+                    output_path = full_folder+'/'+str(list_full_folder[-1]+1)+'/'
+                os.makedirs(output_path)
+                bs = int(self.bs_var.get())
+                bg = int(self.bg_var.get())    
+                lv = int(self.lv_var.get())
+
+                bs_path = sep(os.path.join(self.aux_path, self.list_files[bs%len(self.list_files)]))
+                bg_path = sep(os.path.join(self.aux_path, self.list_files[bg%len(self.list_files)]))
+                lv_path = sep(os.path.join(self.aux_path, self.list_files[lv%len(self.list_files)]))
+
+                image_list = [bs_path, bg_path, lv_path]
+                image_list_i = [bs, bg, lv]
+                self.log_file.write(f'ouptut folder {output_path}\n')
+                for i,f in enumerate(image_list):
+                    if '.nii' in f:
+                        image = self.nii_image.get_fdata()[:,:,image_list_i[i]]
+                        image = pre.MinMaxScaler((0,255)).fit_transform(image)
+                        image = np.rot90(image, 1)
+                        image = Image.fromarray(image)
+                    if '.dcm' in f:
+                        output_image = self.dcm_image(f)
+                        image = Image.fromarray(output_image)        
+                    else:
+                        image = Image.open(f)
+                    image.thumbnail((int(self.size.get()), int(self.size.get())))
+                    image.convert('L').save(output_path+str(i)+'.jpg')
+                self.prev_output_path_var.set('Previous set saved in '+output_path)
+                self.reset()
+                self.log_file.write(f'finish saving function, reset vars')
+            return 0
+        except Exception as e:
+            messagebox.showerror("Error", "Error")
+            self.log_file.write('Error\n'+ str(e))
+            #self.log_file.close()
+
     def populate_tree(self, parent, full_path:str=None):
         # Get subdirectories of parent directory
         try:
@@ -304,10 +367,12 @@ class FileBrowserGUI:
             return ic_var
         except Exception as e:
             messagebox.showerror("Error", "Error\n"+ str(e))
-            log = open(self.log_file, 'a+')
-            log.write('Error\n'+ str(e))
-            log.close()
-                
+            exc_type, exc_obj, exc_tb = sys.exc_info()
+            fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+            print(exc_type, fname, exc_tb.tb_lineno)
+            self.log_file.write(f'Error\n{str(e)}, Type: {exc_type}, file: {fname}, line: {exc_tb.tb_lineno}\n')
+            #self.log_file.close()
+                           
     def browse_files(self, event=None):
         try:
             directory = askdirectory()
@@ -323,15 +388,20 @@ class FileBrowserGUI:
                 messagebox.showerror("Error", "Invalid path")
         except Exception as e:
             messagebox.showerror("Error", "Error\n"+ str(e))
-            log = open(self.log_file, 'a+')
-            log.write('Error\n'+ str(e))
-            log.close()
-
+            exc_type, exc_obj, exc_tb = sys.exc_info()
+            fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+            print(exc_type, fname, exc_tb.tb_lineno)
+            self.log_file.write(f'Error\n{str(e)}, Type: {exc_type}, file: {fname}, line: {exc_tb.tb_lineno}\n')
+            #self.log_file.close()
+            
     def tree_double_click(self, event):
         try:
+            self.log_file.write(f'Opening {self.tree.selection()[0]}\n')
             item = self.tree.selection()[0]
             path = ' '.join(self.tree.item(item, "value"))
+            self.log_file.write(f'Opening {path}\n')
             if os.path.isdir(path) or '.nii' in path:
+                self.log_file.write(f'{path} is a valid direcoty\n')
                 # Update directory size in treeview
                 self.tree.set(item)
 
@@ -340,6 +410,7 @@ class FileBrowserGUI:
                 for widget in self.image_frame.winfo_children():
                     widget.destroy()
                 # Populate image frame with images from selected directory
+                self.log_file.write(f'manage images and gallery\n')
                 self.aux_path = path
                 self.populate_images(path)
                 self.manage_gallery()
@@ -354,10 +425,12 @@ class FileBrowserGUI:
                 self.reset()
         except Exception as e:
             messagebox.showerror("Error", "Error\n"+ str(e))
-            log = open(self.log_file, 'a+')
-            log.write('Error\n'+ str(e))
-            log.close()
-  
+            exc_type, exc_obj, exc_tb = sys.exc_info()
+            fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+            print(exc_type, fname, exc_tb.tb_lineno)
+            self.log_file.write(f'Error\n{str(e)}, Type: {exc_type}, file: {fname}, line: {exc_tb.tb_lineno}\n')
+            #self.log_file.close()
+            
     def browse_button_output_click(self,event=None):
         try:
             directory = askdirectory()
@@ -366,10 +439,12 @@ class FileBrowserGUI:
             self.path_entry_output.insert(0, directory)
         except Exception as e:
             messagebox.showerror("Error", "Error\n"+ str(e))
-            log = open(self.log_file, 'a+')
-            log.write('Error\n'+ str(e))
-            log.close()
-
+            exc_type, exc_obj, exc_tb = sys.exc_info()
+            fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+            print(exc_type, fname, exc_tb.tb_lineno)
+            self.log_file.write(f'Error\n{str(e)}, Type: {exc_type}, file: {fname}, line: {exc_tb.tb_lineno}\n')
+            #self.log_file.close()
+            
     def reset(self,event=None):
         try:
             self.bs_var.set('')
@@ -414,70 +489,12 @@ class FileBrowserGUI:
             self.manage_gallery()
         except Exception as e:
             messagebox.showerror("Error", "Error\n"+ str(e))
-            log = open(self.log_file, 'a+')
-            log.write('Error\n'+ str(e))
-            log.close()
-
-    def save_button_click(self,event=None):
-        """
-        Hemorrhage self.radio_var = 1, folder = 'H'
-        Normal self.radio_var = 2, folder = 'N'
-        Isquemic self.radio_var = 3, folder = 'I'
-        Unknown self.radio_var = 4, folder = 'U'
-        """
-        try:
-            self.log_file.write('Saving\n')
-            if self.save_button['state'] != 'normal':
-                return
-            if (self.radio_var.get() == 0):
-                messagebox.showerror("Error", "First select if the set of images are Ischemia, normal, hemorrhage or unknown.")
-                return
-            if (self.output_path_var.get() == '') or not(os.path.isdir(self.output_path_var.get())):
-                messagebox.showerror("Error", "Select a valid output folder")
-                return
-            else:
-                folder = ['H','N','I','U'][self.radio_var.get()-1]
-                full_folder =  self.output_path_var.get()+'/'+folder
-                folders = os.listdir(self.output_path_var.get())
-                if not(folder in folders) or not(os.path.isdir(full_folder)):
-                    os.makedirs(full_folder)
-                list_full_folder = os.listdir(full_folder)
-                list_full_folder =  [int('0'.join(filter(str.isdigit, s))) for s in list_full_folder]
-                if len(list_full_folder) == 0:
-                    output_path = full_folder+'/0/'
-                else:
-                    output_path = full_folder+'/'+str(list_full_folder[-1]+1)+'/'
-                os.makedirs(output_path)
-                bs = int(self.bs_var.get())
-                bg = int(self.bg_var.get())    
-                lv = int(self.lv_var.get())
-
-                bs_path = sep(os.path.join(self.aux_path, self.list_files[bs%len(self.list_files)]))
-                bg_path = sep(os.path.join(self.aux_path, self.list_files[bg%len(self.list_files)]))
-                lv_path = sep(os.path.join(self.aux_path, self.list_files[lv%len(self.list_files)]))
-
-                image_list = [bs_path, bg_path, lv_path]
-                image_list_i = [bs, bg, lv]
-                for i,f in enumerate(image_list):
-                    if '.nii' in f:
-                        image = self.nii_image.get_fdata()[:,:,image_list_i[i]]
-                        image = pre.MinMaxScaler((0,255)).fit_transform(image)
-                        image = np.rot90(image, 1)
-                        image = Image.fromarray(image)
-                    if '.dcm' in f:
-                        output_image = self.dcm_image(f)
-                        image = Image.fromarray(output_image)        
-                    else:
-                        image = Image.open(f)
-                    image.thumbnail((int(self.size.get()), int(self.size.get())))
-                    image.convert('L').save(output_path+str(i)+'.jpg')
-                self.prev_output_path_var.set('Previous set saved in '+output_path)
-                self.reset()
-        except Exception as e:
-            messagebox.showerror("Error", "Error")
-            self.log_file.write('Error\n'+ str(e))
-            self.log_file.close()
-    
+            exc_type, exc_obj, exc_tb = sys.exc_info()
+            fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+            print(exc_type, fname, exc_tb.tb_lineno)
+            self.log_file.write(f'Error\n{str(e)}, Type: {exc_type}, file: {fname}, line: {exc_tb.tb_lineno}\n')
+            #self.log_file.close()
+              
     def bs_button_click(self, event):
         try:
             if self.bs_var.get() != '' and self.file_index != int(self.bs_var.get()):
@@ -507,7 +524,7 @@ class FileBrowserGUI:
                 self.manage_images()
                 self.manage_gallery()
                 if self.bg_var.get() != '' and self.lv_var.get() != '':
-                    self.save_button.config(state='normal')    
+                    self.save_button.config(state='normal', command=self.save_button_click)
             else:
                 if self.file_index == int(self.bs_var.get()):
                     self.bs_var.set('')
@@ -518,10 +535,12 @@ class FileBrowserGUI:
                 self.save_button.config(state='disabled')
         except Exception as e:
             messagebox.showerror("Error", "Error\n"+ str(e))
-            log = open(self.log_file, 'a+')
-            log.write('Error\n'+ str(e))
-            log.close()
-              
+            exc_type, exc_obj, exc_tb = sys.exc_info()
+            fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+            print(exc_type, fname, exc_tb.tb_lineno)
+            self.log_file.write(f'Error\n{str(e)}, Type: {exc_type}, file: {fname}, line: {exc_tb.tb_lineno}\n')
+            #self.log_file.close()
+                         
     def bg_button_click(self, event):
         try:
             if self.bg_var.get() != '' and self.file_index != int(self.bg_var.get()):
@@ -550,7 +569,7 @@ class FileBrowserGUI:
                 self.manage_images()
                 self.manage_gallery()
                 if self.bs_var.get() != '' and self.lv_var.get() != '':
-                    self.save_button.config(state='normal')
+                    self.save_button.config(state='normal', command=self.save_button_click)
             else:
                 if self.file_index == int(self.bg_var.get()):
                     self.bg_var.set('')
@@ -561,10 +580,12 @@ class FileBrowserGUI:
                 self.save_button.config(state='disabled')          
         except Exception as e:
             messagebox.showerror("Error", "Error\n"+ str(e))
-            log = open(self.log_file, 'a+')
-            log.write('Error\n'+ str(e))
-            log.close()
-
+            exc_type, exc_obj, exc_tb = sys.exc_info()
+            fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+            print(exc_type, fname, exc_tb.tb_lineno)
+            self.log_file.write(f'Error\n{str(e)}, Type: {exc_type}, file: {fname}, line: {exc_tb.tb_lineno}\n')
+            #self.log_file.close()
+            
     def lv_button_click(self, event):
         try:
             if self.lv_var.get() != '' and self.file_index != int(self.lv_var.get()):
@@ -594,7 +615,7 @@ class FileBrowserGUI:
                 self.manage_gallery()
                 #self.image_frame.config(bg='green')
                 if self.bs_var.get() != '' and self.bg_var.get() != '':
-                    self.save_button.config(state='normal')
+                    self.save_button.config(state='normal', command=self.save_button_click)
             else:
                 if self.file_index == int(self.lv_var.get()):
                     self.lv_var.set('')
@@ -605,10 +626,12 @@ class FileBrowserGUI:
                 self.save_button.config(state='disabled')
         except Exception as e:
             messagebox.showerror("Error", "Error\n"+ str(e))
-            log = open(self.log_file, 'a+')
-            log.write('Error\n'+ str(e))
-            log.close()
-
+            exc_type, exc_obj, exc_tb = sys.exc_info()
+            fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+            print(exc_type, fname, exc_tb.tb_lineno)
+            self.log_file.write(f'Error\n{str(e)}, Type: {exc_type}, file: {fname}, line: {exc_tb.tb_lineno}\n')
+            #self.log_file.close()
+            
     def next_button_click(self,event=None):
         try:
             self.file_index += 1
@@ -617,10 +640,12 @@ class FileBrowserGUI:
             self.manage_images()
         except Exception as e:
             messagebox.showerror("Error", "Error\n"+ str(e))
-            log = open(self.log_file, 'a+')
-            log.write('Error\n'+ str(e))
-            log.close()
-
+            exc_type, exc_obj, exc_tb = sys.exc_info()
+            fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+            print(exc_type, fname, exc_tb.tb_lineno)
+            self.log_file.write(f'Error\n{str(e)}, Type: {exc_type}, file: {fname}, line: {exc_tb.tb_lineno}\n')
+            #self.log_file.close()
+            
     def prev_button_click(self,event=None):
         try:
             self.file_index -= 1
@@ -629,10 +654,12 @@ class FileBrowserGUI:
             self.manage_images()
         except Exception as e:
             messagebox.showerror("Error", "Error\n"+ str(e))
-            log = open(self.log_file, 'a+')
-            log.write('Error\n'+ str(e))
-            log.close()
-
+            exc_type, exc_obj, exc_tb = sys.exc_info()
+            fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+            print(exc_type, fname, exc_tb.tb_lineno)
+            self.log_file.write(f'Error\n{str(e)}, Type: {exc_type}, file: {fname}, line: {exc_tb.tb_lineno}\n')
+            #self.log_file.close()
+            
     def next_gallery_button_click(self,event=None):
         try:
             if self.gallery_index == 0:
@@ -644,10 +671,12 @@ class FileBrowserGUI:
             self.manage_gallery()
         except Exception as e:
             messagebox.showerror("Error", "Error\n"+ str(e))
-            log = open(self.log_file, 'a+')
-            log.write('Error\n'+ str(e))
-            log.close()
-    
+            exc_type, exc_obj, exc_tb = sys.exc_info()
+            fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+            print(exc_type, fname, exc_tb.tb_lineno)
+            self.log_file.write(f'Error\n{str(e)}, Type: {exc_type}, file: {fname}, line: {exc_tb.tb_lineno}\n')
+            #self.log_file.close()
+            
     def prev_gallery_button_click(self,event=None):
         try:
             if self.max_gallery_index != 0:
@@ -659,10 +688,12 @@ class FileBrowserGUI:
             self.manage_gallery()
         except Exception as e:
             messagebox.showerror("Error", "Error\n"+ str(e))
-            log = open(self.log_file, 'a+')
-            log.write('Error\n'+ str(e))
-            log.close()
-
+            exc_type, exc_obj, exc_tb = sys.exc_info()
+            fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+            print(exc_type, fname, exc_tb.tb_lineno)
+            self.log_file.write(f'Error\n{str(e)}, Type: {exc_type}, file: {fname}, line: {exc_tb.tb_lineno}\n')
+            #self.log_file.close()
+            
     def populate_images(self, path):
         # Get image files in directory
         # (0020, 0013) Instance Number                     IS: '29'
@@ -713,10 +744,12 @@ class FileBrowserGUI:
             full_path = os.path.join(path, image_files[0])
         except Exception as e:
             messagebox.showerror("Error", "Error\n"+ str(e))
-            log = open(self.log_file, 'a+')
-            log.write('Error\n'+ str(e))
-            log.close()
-
+            exc_type, exc_obj, exc_tb = sys.exc_info()
+            fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+            print(exc_type, fname, exc_tb.tb_lineno)
+            self.log_file.write(f'Error\n{str(e)}, Type: {exc_type}, file: {fname}, line: {exc_tb.tb_lineno}\n')
+            #self.log_file.close()
+            
     def update_size(self):
         try:
             self.size.set(self.size_entry.get())
@@ -724,10 +757,12 @@ class FileBrowserGUI:
             self.manage_images()
         except Exception as e:
             messagebox.showerror("Error", "Error\n"+ str(e))
-            log = open(self.log_file, 'a+')
-            log.write('Error\n'+ str(e))
-            log.close()
-
+            exc_type, exc_obj, exc_tb = sys.exc_info()
+            fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+            print(exc_type, fname, exc_tb.tb_lineno)
+            self.log_file.write(f'Error\n{str(e)}, Type: {exc_type}, file: {fname}, line: {exc_tb.tb_lineno}\n')
+            #self.log_file.close()
+            
     def get_first_of_dicom_field_as_int(self, x):
         #get x[0] as in int is x is a 'pydicom.multival.MultiValue', otherwise get int(x)
         try:
@@ -737,10 +772,12 @@ class FileBrowserGUI:
                 return int(x)
         except Exception as e:
             messagebox.showerror("Error", "Error\n"+ str(e))
-            log = open(self.log_file, 'a+')
-            log.write('Error\n'+ str(e))
-            log.close()
-
+            exc_type, exc_obj, exc_tb = sys.exc_info()
+            fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+            print(exc_type, fname, exc_tb.tb_lineno)
+            self.log_file.write(f'Error\n{str(e)}, Type: {exc_type}, file: {fname}, line: {exc_tb.tb_lineno}\n')
+            #self.log_file.close()
+            
     def window_image(self, img, window_center,window_width, intercept, slope, rescale=True):
         try:
             img = (img*slope +intercept) #for translation adjustments given in the dicom file. 
@@ -753,15 +790,14 @@ class FileBrowserGUI:
             return img
         except Exception as e:
             messagebox.showerror("Error", "Error\n"+ str(e))
-            log = open(self.log_file, 'a+')
-            log.write('Error\n'+ str(e))
-            log.close()
-
+            exc_type, exc_obj, exc_tb = sys.exc_info()
+            fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+            print(exc_type, fname, exc_tb.tb_lineno)
+            self.log_file.write(f'Error\n{str(e)}, Type: {exc_type}, file: {fname}, line: {exc_tb.tb_lineno}\n')
+            #self.log_file.close()
+            
     def get_windowing(self,data):
         try:
-            log = open(self.log_file, 'a+')
-            log.write(f'get_windowing \n')
-            log.close()
             try:
                 dicom_fields = [data[('0028','1050')].value, #window center
                                 data[('0028','1051')].value, #window width
@@ -772,64 +808,58 @@ class FileBrowserGUI:
                                 100.0, #window width
                                 -1024.0, #intercept
                                 1] #slope
-                log = open(self.log_file, 'a+')
-                log.write(f'finish get windowing {data}\n')
-                log.close()
+                self.log_file.write(f'finish get windowing {data}\n')
+                
                 return dicom_fields
-            log = open(self.log_file, 'a+')
-            log.write(f'finish get windowing {data}\n')
-            log.close()
+            
+            #self.log_file.write(f'finish get windowing {data}\n')
+            
             return [self.get_first_of_dicom_field_as_int(x) for x in dicom_fields]
         except Exception as e:
             messagebox.showerror("Error", "Error\n"+ str(e))
-            log = open(self.log_file, 'a+')
-            log.write('Error\n'+ str(e))
-            log.close()
-    
+            exc_type, exc_obj, exc_tb = sys.exc_info()
+            fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+            print(exc_type, fname, exc_tb.tb_lineno)
+            self.log_file.write(f'Error\n{str(e)}, Type: {exc_type}, file: {fname}, line: {exc_tb.tb_lineno}\n')
+            #self.log_file.close()
+            
     def dcm_image(self, full_path):
         
         if '\\' in full_path:
             full_path = sep(full_path)
         print('dcm_image')            
         ds = dicom.dcmread(full_path)
-        log = open(self.log_file, 'a+')
-        log.write('dcm_image\n'+str(full_path)+ '\n')
-        log.close()
+        #self.log_file.write('dcm_image\n'+str(full_path)+ '\n')
+        
         #print(ds)
         
         image = ds.pixel_array
-        log = open(self.log_file, 'a+')
-        log.write(f'dcm_image pixel array\n')
-        log.close()
+        #self.log_file.write(f'dcm_image pixel array\n')
+        
         window_center , window_width, intercept, slope = self.get_windowing(ds)
-        log = open(self.log_file, 'a+')
-        log.write(f'dcm_image\n {str(window_center)} {str(window_width)} {str(intercept)} {str(slope)}')
-        log.close()
+        #self.log_file.write(f'dcm_image\n {str(window_center)} {str(window_width)} {str(intercept)} {str(slope)}')
+        
         output = self.window_image(image, window_center, window_width, intercept, slope, rescale = False)
-        log = open(self.log_file, 'a+')
-        log.write(f'dcm_image\n{output}\n')
-        log.close()
+        #self.log_file.write(f'dcm_image\n{output}\n')
+        
         #print(ds)
         
         contrast = self.contrast_var.get()
         if contrast == 1:
             p2, p98 = np.percentile(output, (10, 90))
             output = exposure.rescale_intensity(output, in_range=(p2, p98))
-            log = open(self.log_file, 'a+')
-            log.write(f'dcm contrast 1 {output}\n')
-            log.close()
+            #self.log_file.write(f'dcm contrast 1 {output}\n')
+            
         elif contrast == 2:
             output = pre.MinMaxScaler().fit_transform(output)
             output = exposure.equalize_hist(output)   
-            log = open(self.log_file, 'a+')
-            log.write(f'dcm contrast 2 {output}\n')
-            log.close()
+            #self.log_file.write(f'dcm contrast 2 {output}\n')
+            
         output = pre.MinMaxScaler((0,255)).fit_transform(output)
 
         #ds = dicom.dcmread(full_path)
-        log = open(self.log_file, 'a+')
-        log.write(f'Final dcm {output}\n')
-        log.close()
+        #self.log_file.write(f'Final dcm {output}\n')
+        
         return output
         
     def manage_images(self):
@@ -839,9 +869,7 @@ class FileBrowserGUI:
 
         try:
             self.prev_image = self.actual_image
-            log = open(self.log_file, 'a+')
-            log.write('Manage_images Actual_image\n'+str(self.actual_image)+','+ str(self.file_index)+ '\n')
-            log.close()
+            self.log_file.write('Manage_images Actual_image\n'+str(self.actual_image)+','+ str(self.file_index)+ '\n')
             
             bs, bg, lv = -1, -1, -1
             if self.bs_var.get() != '': 
@@ -853,9 +881,7 @@ class FileBrowserGUI:
             
             for widget in self.image_frame.winfo_children():
                 widget.destroy()        
-            log = open(self.log_file, 'a+')
-            log.write('Manage_images before image\n')
-            log.close()
+            self.log_file.write('Manage_images before image\n')
             if not '.nii' in self.aux_path:
                 full_path = sep(os.path.join(self.aux_path, self.list_files[self.file_index%len(self.list_files)]))
                 self.actual_image = full_path
@@ -870,9 +896,8 @@ class FileBrowserGUI:
             else:
                 image = Image.open(full_path)
             image = image.convert('HSV')
-            log = open(self.log_file, 'a+')
-            log.write('manage\n'+str(full_path)+ '\n')
-            log.close()
+            self.log_file.write('manage\n'+str(full_path)+ '\n')
+            
 
             image.thumbnail((int(self.size.get()), int(self.size.get())), Image.Resampling.LANCZOS)
             
@@ -898,34 +923,38 @@ class FileBrowserGUI:
             canvas.grid(row=0, column=0)  # show widget
         except Exception as e:
             messagebox.showerror("Error", "Error\n"+ str(e))
-            log = open(self.log_file, 'a+')
-            log.write('Error\n'+ str(e))
-            log.close()
+            exc_type, exc_obj, exc_tb = sys.exc_info()
+            fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+            print(exc_type, fname, exc_tb.tb_lineno)
+            self.log_file.write(f'Error\n{str(e)}, Type: {exc_type}, file: {fname}, line: {exc_tb.tb_lineno}\n')
+            ##self.log_file.close()
              
     def gallery_scroll(self, event):
         try:
             print(event)
         except Exception as e:
             messagebox.showerror("Error", "Error\n"+ str(e))
-            log = open(self.log_file, 'a+')
-            log.write('Error\n'+ str(e))
-            log.close()
-    
+            exc_type, exc_obj, exc_tb = sys.exc_info()
+            fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+            print(exc_type, fname, exc_tb.tb_lineno)
+            self.log_file.write(f'Error\n{str(e)}, Type: {exc_type}, file: {fname}, line: {exc_tb.tb_lineno}\n')
+            #self.log_file.close()
+            
     def gallery_click(self, event, index):
         try:
             self.file_index = index
             self.manage_images()
         except Exception as e:
             messagebox.showerror("Error", "Error\n"+ str(e))
-            log = open(self.log_file, 'a+')
-            log.write('Error\n'+ str(e))
-            log.close()
-
+            exc_type, exc_obj, exc_tb = sys.exc_info()
+            fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+            print(exc_type, fname, exc_tb.tb_lineno)
+            self.log_file.write(f'Error\n{str(e)}, Type: {exc_type}, file: {fname}, line: {exc_tb.tb_lineno}\n')
+            #self.log_file.close()
+            
     def manage_gallery(self):
         try:
-            log = open(self.log_file, 'a+')
-            log.write('Actual_image\n'+'Manage_gallery'+str(self.list_files)+','+ str(self.gallery_index)+ '\n')
-            log.close()
+            self.log_file.write('Actual_image\n'+'Manage_gallery'+str(self.list_files)+','+ str(self.gallery_index)+ '\n')
             for widget in self.gallery_canvas.winfo_children():
                 widget.destroy()
             
@@ -941,9 +970,8 @@ class FileBrowserGUI:
             if self.lv_var.get() != '':
                 lv = int(self.lv_var.get())
             
-            log = open(self.log_file, 'a+')
-            log.write(f"Manage_gallery before for {str(','.join(sublist))}\n")
-            log.close()
+            self.log_file.write(f"Manage_gallery before for {str(','.join(sublist))}\n")
+            
             for i, path in enumerate(sublist):
                 full_path = sep(os.path.join(self.aux_path, str(path)))
                 if '.nii' in self.aux_path:
@@ -958,9 +986,8 @@ class FileBrowserGUI:
                     image = Image.open(full_path)
                 image.thumbnail((100, 100))
 
-                log = open(self.log_file, 'a+')
-                log.write('manage_gallery full_path\n'+str(full_path)+ '\n')
-                log.close()
+                self.log_file.write('manage_gallery full_path\n'+str(full_path)+ '\n')
+                
                 
                 canva_height = image.size[0]+10
                 canva_width = image.size[1]+10
@@ -993,9 +1020,12 @@ class FileBrowserGUI:
                 #print(self.gallery_canvas.winfo_children()[i])
         except Exception as e:
             messagebox.showerror("Error", "Error\n"+ str(e))
-            log = open(self.log_file, 'a+')
-            log.write('Error\n'+ str(e))
-            log.close()
+            exc_type, exc_obj, exc_tb = sys.exc_info()
+            fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+            print(exc_type, fname, exc_tb.tb_lineno)
+            self.log_file.write(f'Error\n{str(e)}, Type: {exc_type}, file: {fname}, line: {exc_tb.tb_lineno}\n')
+            #self.log_file.close()
+            
             
               
 if __name__ == "__main__":
